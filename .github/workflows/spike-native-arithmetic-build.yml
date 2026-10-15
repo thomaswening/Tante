@@ -1,0 +1,101 @@
+# Spike for ADR-0001 §6 (docs/spikes/2026-10-16-native-arithmetic-build).
+name: spike-native-arithmetic-build
+on:
+  push:
+    branches: [spike/native-arithmetic-build]
+  workflow_dispatch:
+
+env:
+  VCPKG_COMMIT: c52f7bd748185ef0e0daf033d9f2ddfc8a3449ea
+  SPIKE_DIR: docs/spikes/2026-10-16-native-arithmetic-build
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: windows-msvc, triplet: x64-windows, exe: build/Release/spike.exe, asan_exe: build-asan/Release/spike.exe }
+          - { os: ubuntu-latest, name: linux-gcc, triplet: x64-linux, exe: build/spike, asan_exe: build-asan/spike }
+          - { os: macos-latest, name: macos-clang, triplet: arm64-osx, exe: build/spike, asan_exe: build-asan/spike }
+    runs-on: ${{ matrix.os }}
+    env:
+      VCPKG_ROOT: ${{ runner.temp }}/vcpkg
+      VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg-bincache,readwrite
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y autoconf autoconf-archive automake libtool pkg-config
+      - name: Install build tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install autoconf autoconf-archive automake libtool pkg-config
+      - name: Get vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout "$VCPKG_COMMIT"
+          mkdir -p vcpkg-bincache
+      - name: Bootstrap vcpkg (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: '"%VCPKG_ROOT%\bootstrap-vcpkg.bat" -disableMetrics'
+      - name: Bootstrap vcpkg (Unix)
+        if: runner.os != 'Windows'
+        run: '"$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics'
+      - uses: actions/cache@v4
+        with:
+          path: vcpkg-bincache
+          key: vcpkg-${{ matrix.triplet }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('docs/spikes/2026-10-16-native-arithmetic-build/vcpkg.json') }}
+      - name: Configure (vcpkg builds GMP, MPFR and FLINT here)
+        run: |
+          start=$(date +%s)
+          cmake -S "$SPIKE_DIR" -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
+          echo "configure_seconds $(( $(date +%s) - start ))" > build-times.txt
+      - name: Build
+        run: cmake --build build --config Release
+      - name: Run
+        run: ${{ matrix.exe }} out
+      - name: Configure and build with sanitizers
+        run: |
+          cmake -S "$SPIKE_DIR" -B build-asan -DCMAKE_BUILD_TYPE=Release -DSPIKE_SANITIZE=ON \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }}
+          cmake --build build-asan --config Release
+      - name: Put the MSVC AddressSanitizer runtime on PATH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dll = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter clang_rt.asan_dynamic-x86_64.dll | Where-Object FullName -like '*Hostx64\x64*' | Select-Object -First 1
+          $dll.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Run with sanitizers
+        run: |
+          ${{ matrix.asan_exe }} out-asan
+          diff out/results.txt out-asan/results.txt
+      - name: Collect
+        if: always()
+        run: |
+          mkdir -p out && cp build-times.txt out/ || true
+          "$VCPKG_ROOT/vcpkg" list --x-install-root=build/vcpkg_installed > out/vcpkg-list.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-${{ matrix.name }}
+          path: out/
+
+  compare:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Results must be byte-identical on all three systems
+        run: |
+          for d in spike-*; do echo "== $d"; cat "$d/info.txt" "$d/timings.txt" "$d/build-times.txt"; done
+          diff spike-linux-gcc/results.txt spike-windows-msvc/results.txt
+          diff spike-linux-gcc/results.txt spike-macos-clang/results.txt
+          cat spike-linux-gcc/results.txt
