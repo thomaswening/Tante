@@ -1,0 +1,18 @@
+# Tante
+
+Tante is a symbolic mathematics engine for physicists, from elementary algebra to calculations too long to do by hand. It is meant as a modern, well-documented successor to [FORM](https://github.com/form-dev/form): a new, independent implementation that is easier to understand, maintain and extend.
+
+## Status
+
+Design. No code yet. The project is specified in:
+
+- [Requirements](docs/requirements.md): what Tante must do, verifiably
+- [Prior-art survey](docs/prior-art.md): existing systems, their limits, and the known results Tante will be validated against
+
+## Credit
+
+Tante owes its model of calculation to FORM, by Jos Vermaseren and the FORM developers (Nikhef; now developed at [github.com/form-dev/form](https://github.com/form-dev/form)). Compatibility will be measured against FORM 5.0.2. Tante is not a fork of FORM and contains none of its source code.
+
+## Licence
+
+GNU General Public License, version 3 or (at your option) any later version. See [LICENSE](LICENSE).
