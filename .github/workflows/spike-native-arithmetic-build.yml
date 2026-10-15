@@ -20,13 +20,14 @@ jobs:
           - { os: macos-latest, name: macos-clang, triplet: arm64-osx, exe: build/spike, asan_exe: build-asan/spike }
     runs-on: ${{ matrix.os }}
     env:
-      VCPKG_ROOT: ${{ runner.temp }}/vcpkg
       VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/vcpkg-bincache,readwrite
     defaults:
       run:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+      - name: Set VCPKG_ROOT
+        run: echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
       - name: Install build tools (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y autoconf autoconf-archive automake libtool pkg-config
@@ -40,8 +41,8 @@ jobs:
           mkdir -p vcpkg-bincache
       - name: Bootstrap vcpkg (Windows)
         if: runner.os == 'Windows'
-        shell: cmd
-        run: '"%VCPKG_ROOT%\bootstrap-vcpkg.bat" -disableMetrics'
+        shell: pwsh
+        run: '& "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics'
       - name: Bootstrap vcpkg (Unix)
         if: runner.os != 'Windows'
         run: '"$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics'
