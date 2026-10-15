@@ -13,3 +13,4 @@ New records copy [template.md](template.md).
 | ADR | Decision | Settles | Status |
 |---|---|---|---|
 | [0001](0001-cpp20-cmake-vcpkg-guardrails.md) | C++20, CMake and vcpkg on Windows, macOS and Linux from the first commit, with warnings as errors, sanitizers and static analysis; a C interface for compiled modules | [OPEN-E](../requirements.md#open-e) | Proposed |
+| [0002](0002-no-input-from-symbolica.md) | Nothing in Tante draws on Symbolica; external benchmark tables are used without their Symbolica column | [OPEN-P](../requirements.md#open-p) | Proposed |
