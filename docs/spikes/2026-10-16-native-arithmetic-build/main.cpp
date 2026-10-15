@@ -35,8 +35,8 @@ constexpr std::array<const char*, 4> kVars{"x", "y", "z", "t"};
 std::uint64_t fnv1a(const std::string& text)
 {
     std::uint64_t hash = 14695981039346656037ULL;
-    for (const unsigned char c : text) {
-        hash ^= c;
+    for (const char c : text) {
+        hash ^= static_cast<unsigned char>(c);
         hash *= 1099511628211ULL;
     }
     return hash;
