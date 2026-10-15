@@ -8,6 +8,7 @@ Design. No code yet. The project is specified in:
 
 - [Requirements](docs/requirements.md): what Tante must do, verifiably
 - [Prior-art survey](docs/prior-art.md): existing systems, their limits, and the known results Tante will be validated against
+- [Architecture decision records](docs/adr/README.md): why Tante is built the way it is
 
 ## Credit
 
