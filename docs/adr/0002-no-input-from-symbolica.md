@@ -1,6 +1,6 @@
 # ADR-0002: Nothing in Tante draws on Symbolica; external benchmark tables are used without their Symbolica column (resolves OPEN-P)
 
-- **Status:** Proposed
+- **Status:** Accepted (Thomas, 16 October 2026)
 - **Date:** 2026-10-16
 
 ## Context

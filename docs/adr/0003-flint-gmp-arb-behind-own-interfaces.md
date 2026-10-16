@@ -1,6 +1,6 @@
-# ADR-0003: Polynomial arithmetic uses FLINT, integers GMP and floating point MPFR, each behind an interface of Tante's own, with a simple implementation of Tante's own for cross-checks (resolves OPEN-O (a))
+# ADR-0003: Polynomial arithmetic uses FLINT, integers GMP and numerical evaluation FLINT's ball arithmetic (arb), each behind an interface of Tante's own, with a simple implementation of Tante's own for cross-checks (resolves OPEN-O (a))
 
-- **Status:** Proposed
+- **Status:** Accepted (Thomas, 16 October 2026)
 - **Date:** 2026-10-16
 
 ## Context
@@ -20,7 +20,7 @@ Evidence, checked on 16 October 2026:
 
 ## Decision
 
-**Tante's polynomial operations go through an interface of Tante's own with two implementations: one backed by FLINT, the default, and a simple one written in Tante, selectable by the user. Big integers use GMP and floating-point evaluation uses MPFR, each through its own Tante interface. No code outside an adapter names a FLINT, GMP or MPFR type or function, and the result is normalised by Tante, not by the library, so it is identical whichever implementation computed it.** The parts:
+**Tante's polynomial operations go through an interface of Tante's own with two implementations: one backed by FLINT, the default, and a simple one written in Tante, selectable by the user. Big integers use GMP, and numerical evaluation uses FLINT's ball arithmetic (`arb`), each through its own Tante interface. No code outside an adapter names a FLINT, GMP or MPFR type or function, and the result is normalised by Tante, not by the library, so it is identical whichever implementation computed it.** The parts:
 
 ### 1. Libraries, versions and licences
 
@@ -28,7 +28,8 @@ Evidence, checked on 16 October 2026:
 |---|---|---|---|
 | FLINT | 3.6.0 (minimum 3.6.0) | LGPL-3.0-or-later | multivariate polynomial multiplication, exact division, GCD, factorisation over the rationals |
 | GMP | 6.3.0 | LGPL-3.0-or-later OR GPL-2.0-or-later | arbitrary-size integers and rationals (also FLINT's own base) |
-| MPFR | 4.2.2 | LGPL-3.0-or-later | arbitrary-precision floating point with correct rounding ([REQ-101](../requirements.md#req-101)) |
+| FLINT's `arb` | part of FLINT 3.6.0 | LGPL-3.0-or-later | ball arithmetic: real numbers with a guaranteed error bound, for numerical evaluation ([REQ-101](../requirements.md#req-101)) |
+| MPFR | 4.2.2 | LGPL-3.0-or-later | a dependency of FLINT, which builds on it; not called by Tante directly |
 
 - Versions are fixed by the vcpkg `builtin-baseline` of [ADR-0001](0001-cpp20-cmake-vcpkg-guardrails.md) §2. Moving to a new version is a deliberate commit (`build(deps): …`) that must pass the whole polynomial corpus with both implementations; a change of output across a version update is a failed test, not a new golden result.
 - Binary distributions (release archives, and later the Python wheels of [REQ-062](../requirements.md#req-062)) include the licence texts of all three libraries and state where their source can be obtained.
@@ -40,7 +41,7 @@ In .NET terms each interface is an abstract base class (or an `interface`) that 
 - **`PolynomialBackend`**: multiplication, exact division (failing if not exact), division with remainder in a chosen variable, greatest common divisor, and factorisation over the rationals, on polynomials with rational coefficients in the symbols Tante passes in. Factorisation is an optional capability: an implementation may say it does not provide it.
 - **Conversion at the boundary.** Polynomials are passed in and out in a neutral form defined by Tante (a list of monomials, each an exponent vector and a rational coefficient, over an ordered list of Tante symbols). The engine's own term representation (the record on term representation) is converted to and from this form; FLINT's `fmpz_mpoly` and `fmpq_mpoly` objects exist only inside the FLINT adapter, wrapped in classes whose destructor frees them (RAII, [ADR-0001](0001-cpp20-cmake-vcpkg-guardrails.md) §3), as the spike's `Poly` class does. This is the same conversion FORM 5 makes.
 - **`Integer` and `Rational`**: Tante's own value types for coefficients, backed by GMP. How they are laid out in memory (for example whether small values avoid GMP altogether) is left to the record on term representation (Thomas, 16 October 2026). Only the integer adapter includes `gmp.h`. FLINT's own `fmpz` is not used as Tante's integer type, so that replacing FLINT does not change the representation of coefficients.
-- **`BigFloat`**: arbitrary-precision floating point for [REQ-101](../requirements.md#req-101), backed by MPFR (`mpfr_t`, with a precision in bits and round-to-nearest).
+- **`RealBall`**: a real number known to lie within a guaranteed error bound, for [REQ-101](../requirements.md#req-101), backed by FLINT's `arb_t` (a midpoint, a radius and a working precision in bits). Only the evaluation adapter includes FLINT's `arb` headers.
 
 ### 3. Tante's own polynomial implementation ([REQ-097](../requirements.md#req-097))
 
@@ -65,8 +66,10 @@ Libraries leave some choices open: the sign and scaling of a GCD, the order in w
 
 ### 6. Numerical evaluation ([REQ-101](../requirements.md#req-101))
 
-- Evaluation substitutes exact values, converts to `BigFloat` at a working precision above the requested number of digits, evaluates, and prints only digits that are correct. MPFR rounds each single operation correctly but does not bound the error of a whole expression, so the evaluator repeats the evaluation at a higher precision until the requested digits agree and are not next to a rounding boundary. This is the standard practice (Ziv's strategy) and is reliable in practice, but not a proof.
-- If [REQ-101](../requirements.md#req-101)'s "every digit correct" must be guaranteed rather than checked, the `BigFloat` interface can be backed instead by FLINT's ball arithmetic (`arb`), which carries a rigorous error bound through the whole evaluation. The interface is designed so that this swap changes no other code; the choice is left to the record or roadmap phase that implements evaluation.
+- **Evaluation uses ball arithmetic** (Thomas, 16 October 2026). Each number is held as a midpoint and a radius, meaning the true value lies in [midpoint − radius, midpoint + radius], and every operation (including exp, log, sin, cos and powers, [REQ-099](../requirements.md#req-099)) returns a ball proven to contain the true result, rounding errors and the uncertainty of its inputs included.
+- Evaluation substitutes exact values, converts them to balls at a working precision somewhat above the requested number of digits, and evaluates. **IF the whole result ball rounds to the same requested digits, THEN those digits are proven correct and are printed; otherwise the evaluator doubles the working precision and repeats.** It stops with a message after a precision limit the user can raise, rather than print a digit it cannot prove ([REQ-018](../requirements.md#req-018), [REQ-024](../requirements.md#req-024)). The precision used is reported with the result.
+- Why not MPFR with repeated evaluation: MPFR rounds each single operation correctly but does not track how errors accumulate across an expression. Agreement of two evaluations at different precisions can be a coincidence: exp(10⁻⁵⁰) − 1 gives 0 at both 30 and 38 digits, while its true value is about 10⁻⁵⁰. Ball arithmetic gives 0 ± 10⁻³⁰ there, which shows that not even the first digit is known yet.
+- The guarantee is as good as FLINT's `arb` implementation, which is widely used and tested; it is checked on corpus entries with known digits ([REQ-070](../requirements.md#req-070)).
 
 ## Alternatives considered
 
@@ -76,7 +79,7 @@ Libraries leave some choices open: the sign and scaling of a GCD, the order in w
 - **PARI/GP:** GPL-2-or-later, strong in number theory, not built for large sparse multivariate polynomials. Not chosen.
 - **FLINT's `fmpz` as Tante's integer type:** saves a conversion, since FLINT uses it internally, but would tie coefficient storage to FLINT and break [REQ-096](../requirements.md#req-096) for integers. Not chosen.
 - **Boost.Multiprecision instead of direct GMP and MPFR:** a C++ wrapper over the same libraries; adds a dependency without adding a capability Tante's own thin adapters lack. Not chosen.
-- **FLINT's ball arithmetic (`arb`) instead of MPFR now:** rigorous, but [OPEN-O](../requirements.md#open-o) and [REQ-101](../requirements.md#req-101) were agreed with MPFR in mind and Ziv's strategy meets the requirement as tested. Kept open as described in §6.
+- **MPFR with repeated evaluation at rising precision (Ziv's strategy):** the usual practice and slightly faster, but it checks the printed digits rather than proving them, and can be fooled by cancellation (§6). Rejected by Thomas, 16 October 2026, in favour of `arb`, which FLINT already provides at no extra dependency.
 - **Symbolica:** excluded by [ADR-0002](0002-no-input-from-symbolica.md).
 
 ## Consequences

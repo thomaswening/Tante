@@ -1,6 +1,6 @@
 # Spike: GMP, MPFR and FLINT build natively through vcpkg with MSVC, GCC and Apple Clang, and give identical results
 
-Date: 16 October 2026 | For: [ADR-0001](../adr/0001-cpp20-cmake-vcpkg-guardrails.md) §6, [ADR-0003](../adr/0003-flint-gmp-mpfr-behind-own-interfaces.md), [REQ-050](../requirements.md#req-050), [REQ-074](../requirements.md#req-074)
+Date: 16 October 2026 | For: [ADR-0001](../adr/0001-cpp20-cmake-vcpkg-guardrails.md) §6, [ADR-0003](../adr/0003-flint-gmp-arb-behind-own-interfaces.md), [REQ-050](../requirements.md#req-050), [REQ-074](../requirements.md#req-074)
 
 ## Question
 
@@ -54,4 +54,4 @@ Why Windows took 49 minutes (from vcpkg's per-library log of the cold run [38826
 
 ## Conclusion
 
-The route [ADR-0001](../adr/0001-cpp20-cmake-vcpkg-guardrails.md) proposes works: vcpkg builds GMP, MPFR and FLINT natively with MSVC, GCC and Apple Clang, the three give byte-identical results on polynomial multiplication, GCD, factorisation and MPFR evaluation, the sanitizers are clean, and MSVC's builds are within about 5 % of GCC's on GMP multiplication and GCD on the same CPU and about 25 % slower on polynomial multiplication. There is no reason to fall back to clang-cl or MinGW-w64. The cost is a cold Windows build of about 50 minutes, so vcpkg's binary cache is needed in CI from the first commit; with it, a run takes one to two minutes on each system. Adopted in [ADR-0001](../adr/0001-cpp20-cmake-vcpkg-guardrails.md) §6 and [ADR-0003](../adr/0003-flint-gmp-mpfr-behind-own-interfaces.md).
+The route [ADR-0001](../adr/0001-cpp20-cmake-vcpkg-guardrails.md) proposes works: vcpkg builds GMP, MPFR and FLINT natively with MSVC, GCC and Apple Clang, the three give byte-identical results on polynomial multiplication, GCD, factorisation and MPFR evaluation, the sanitizers are clean, and MSVC's builds are within about 5 % of GCC's on GMP multiplication and GCD on the same CPU and about 25 % slower on polynomial multiplication. There is no reason to fall back to clang-cl or MinGW-w64. The cost is a cold Windows build of about 50 minutes, so vcpkg's binary cache is needed in CI from the first commit; with it, a run takes one to two minutes on each system. Adopted in [ADR-0001](../adr/0001-cpp20-cmake-vcpkg-guardrails.md) §6 and [ADR-0003](../adr/0003-flint-gmp-arb-behind-own-interfaces.md).

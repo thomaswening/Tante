@@ -1,6 +1,6 @@
 # ADR-0001: Tante is written in C++20, built with CMake and vcpkg on all three systems from the first commit, under compiler-enforced guardrails (resolves OPEN-E)
 
-- **Status:** Proposed
+- **Status:** Accepted (Thomas, 16 October 2026)
 - **Date:** 2026-10-16
 
 ## Context
@@ -103,7 +103,7 @@ A failure of 1 to 3 on Windows sends the decision to the clang-cl or MinGW-w64 f
 - Harder: three-system CI from the first commit costs CI minutes (macOS runners are the most expensive for private repositories) and slows every change slightly. Making the repository public, already needed for the reference machine ([OPEN-G](../requirements.md#open-g)), removes the minute limits for standard runners.
 - Harder: a cold vcpkg build of GMP, MPFR and FLINT takes about 50 minutes on Windows and 6 to 8 on macOS and Linux; binary caching is needed in CI from the start.
 - Risk: GMP's build tunes itself to the CPU of the machine that builds it, and vcpkg's `fat` option (runtime selection of routines) is not available with MSVC. A cached or released binary built on a newer CPU may fail on an older one. CI's cache key and the release builds must account for this, for example by building GMP for a generic x86-64 target in releases.
-- Follow-up: the spike of §6 is done and recorded; this record awaits Thomas's review. The spike's CMake project and workflow stay on the branch `spike/native-arithmetic-build`; the project's own CMake skeleton and CI workflow are added with the first code, after Thomas approves them.
+- Follow-up: the spike of §6 is done and recorded; Thomas accepted this record on 16 October 2026. The spike's CMake project and workflow stay on the branch `spike/native-arithmetic-build`; the project's own CMake skeleton and CI workflow are added with the first code, after Thomas approves them.
 - Follow-up: `docs/development.md` (stage 6) records the build commands, presets, the clang-tidy check list and how to run the sanitizers locally.
 - Follow-up: the records on the polynomial back end (FLINT, its licence and version), on modules and the C interface, and on error handling refine §2 and §4.
 - Untested: the speed of MSVC's builds beyond the spike's four short benchmarks ([REQ-056](../requirements.md#req-056) is measured on the Linux reference machine, so Windows speed is not a requirement); whether FLINT's CMake build on Windows enables the same optimised code as its autotools build elsewhere; the libraries under the sanitizers; whether C++20 named modules become usable later.
