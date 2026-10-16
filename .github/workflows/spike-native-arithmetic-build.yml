@@ -78,6 +78,15 @@ jobs:
         run: |
           ${{ matrix.asan_exe }} out-asan
           diff out/results.txt out-asan/results.txt
+      - name: Record the CPU
+        if: always()
+        run: |
+          mkdir -p out
+          case "$RUNNER_OS" in
+            Linux) lscpu | grep -E '^(Model name|CPU\(s\))' > out/cpu.txt ;;
+            macOS) sysctl -n machdep.cpu.brand_string hw.ncpu > out/cpu.txt ;;
+            Windows) pwsh -NoProfile -Command '$p = Get-CimInstance Win32_Processor; $p.Name; $p.NumberOfLogicalProcessors' > out/cpu.txt ;;
+          esac
       - name: Collect
         if: always()
         run: |
@@ -96,7 +105,7 @@ jobs:
       - uses: actions/download-artifact@v4
       - name: Results must be byte-identical on all three systems
         run: |
-          for d in spike-*; do echo "== $d"; cat "$d/info.txt" "$d/timings.txt" "$d/build-times.txt"; done
+          for d in spike-*; do echo "== $d"; cat "$d/cpu.txt" "$d/info.txt" "$d/timings.txt" "$d/build-times.txt"; done
           diff spike-linux-gcc/results.txt spike-windows-msvc/results.txt
           diff spike-linux-gcc/results.txt spike-macos-clang/results.txt
           cat spike-linux-gcc/results.txt
