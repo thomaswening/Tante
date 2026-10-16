@@ -16,7 +16,7 @@ Evidence ([prior-art.md §2.4](../prior-art.md#24-symbolica-positioning-and-lice
 
 Requirements involved: [REQ-004](../requirements.md#req-004) (a new, independent engine), [REQ-080](../requirements.md#req-080) (GPL-3.0-or-later, forks welcome), [REQ-056](../requirements.md#req-056) (published performance factors), [REQ-071](../requirements.md#req-071) (independent cross-checks) and [REQ-096](../requirements.md#req-096) (replaceable libraries: Symbolica's own change of licence is one of the reasons given for it).
 
-This is a reading of the licence text by the project, not legal advice. Whether to take legal advice was not decided by Thomas and remains Thomas's decision.
+This is a reading of the licence text by the project, not legal advice. Thomas decided on 16 October 2026 not to take legal advice.
 
 ## Decision
 
@@ -35,7 +35,7 @@ This is a reading of the licence text by the project, not legal advice. Whether 
 
 - **Use Symbolica freely as one engine among many, as before 15 September 2026:** the strongest alternative technically, since its author is a former FORM developer and its benchmarks would be informative. Rejected: the licence forbids exactly this for a Competing Product, permissions terminate on breach, and a GPL project cannot carry that risk into every fork.
 - **Use only releases from before 15 September 2026:** possibly permitted, but the survey did not verify whether those releases keep their earlier terms, and a rule with a version boundary is harder to follow and to check than one without. Not chosen.
-- **Take legal advice first and decide afterwards:** not excluded; it is Thomas's decision. The rule as recorded is the cautious reading, so legal advice could only relax it, never make the project unsafe in the meantime.
+- **Take legal advice first and decide afterwards:** declined by Thomas, 16 October 2026. The rule as recorded is the cautious reading, so legal advice could only relax it, never make the project unsafe in the meantime.
 - **No written rule, only care:** cheaper, but the next maintainer, contributor or AI assistant would not know the boundary. [REQ-092](../requirements.md#req-092) asks that a newcomer can work without help; this record is that help.
 
 ## Consequences
