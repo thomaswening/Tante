@@ -27,7 +27,7 @@ The measurements are in the [term-representation spike](../spikes/2026-10-21-ter
 - Comparing symbols through a table of ranks by name cost about 5 %.
 - A module call through the C interface cost 1.2 to 1.8 times a direct call when it rewrote a term, failing the rule of 1.25 set before the run.
 
-Thomas decided points 1, 2, 4 and the spike on 20 and 21 October 2026, after a brief in chat, and points 3 and 7 on 21 October 2026, after the spike.
+Thomas decided points 1, 2 and 6 and the spike on 20 and 21 October 2026, after a brief in chat, and points 3 and 7 on 21 October 2026, after the spike. Points 4, 5 and 8, and the signed powers and long forms of point 2, were proposed by Claude and listed to Thomas before this record was written (21 October 2026).
 
 ## Decision
 
