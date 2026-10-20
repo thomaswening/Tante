@@ -1,6 +1,6 @@
 # ADR-0004: Tante is a library with a thin command-line tool, split into build targets whose dependencies the build enforces; every module, built-in or third-party, connects through the one C module interface
 
-- **Status:** Proposed
+- **Status:** Accepted (Thomas, by merging [pull request #1](https://github.com/thomaswening/Tante/pull/1) on 19 October 2026)
 - **Date:** 2026-10-16, revised 2026-10-19 after Thomas's decisions
 
 ## Context
