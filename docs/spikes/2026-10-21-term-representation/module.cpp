@@ -67,7 +67,7 @@ public:
 private:
     const tante_host* host_;
     const tante_term* term_;
-    std::array<std::uint32_t, 2 * kBulkPairs> pairs_{};
+    std::array<std::uint32_t, 2 * kBulkPairs> pairs_; // not zero-filled: only the first count_ pairs are read
     std::uint32_t count_;
 };
 
@@ -111,7 +111,7 @@ private:
     const tante_host* host_;
     tante_builder* builder_;
     const tante_term* rest_ = nullptr;
-    std::array<std::uint32_t, 2 * kBulkPairs> pairs_{};
+    std::array<std::uint32_t, 2 * kBulkPairs> pairs_; // not zero-filled: only the first count_ pairs are read
     std::uint32_t count_ = 0;
     bool overflow_ = false;
 };
