@@ -1,6 +1,6 @@
 # ADR-0003: Polynomial arithmetic uses FLINT, integers GMP and numerical evaluation FLINT's ball arithmetic (arb), each behind an interface of Tante's own, with a simple implementation of Tante's own for cross-checks (resolves OPEN-O (a))
 
-- **Status:** Accepted (Thomas, 16 October 2026)
+- **Status:** Accepted (Thomas, 16 October 2026); §1's version-update rule clarified in place, 20 October 2026
 - **Date:** 2026-10-16
 
 ## Context
@@ -31,7 +31,7 @@ Evidence, checked on 16 October 2026:
 | FLINT's `arb` | part of FLINT 3.6.0 | LGPL-3.0-or-later | ball arithmetic: real numbers with a guaranteed error bound, for numerical evaluation ([REQ-101](../requirements.md#req-101)) |
 | MPFR | 4.2.2 | LGPL-3.0-or-later | a dependency of FLINT, which builds on it; not called by Tante directly |
 
-- Versions are fixed by the vcpkg `builtin-baseline` of [ADR-0001](0001-cpp20-cmake-vcpkg-guardrails.md) §2. Moving to a new version is a deliberate commit (`build(deps): …`) that must pass the whole polynomial corpus with both implementations; a change of output across a version update is a failed test, not a new golden result.
+- Versions are fixed by the vcpkg `builtin-baseline` of [ADR-0001](0001-cpp20-cmake-vcpkg-guardrails.md) §2. Moving to a new version is a deliberate commit (`build(deps): …`) that must pass the whole polynomial corpus with both implementations; a change of output across a version update fails the tests and is investigated. IF independent evidence (Tante's own implementation, multiplying back, or the corpus entry's source) shows that the new output is correct, THEN the expected result is corrected in the same commit, with that evidence and a reference to the upstream fix; it is never updated merely because the new version produced it. *(Clarified 20 October 2026 with Thomas: the earlier wording, "a failed test, not a new golden result", could be read as blocking a version that fixes a wrong result; the intent was always to forbid accepting changed output without evidence.)*
 - Binary distributions (release archives, and later the Python wheels of [REQ-062](../requirements.md#req-062)) include the licence texts of all three libraries and state where their source can be obtained.
 
 ### 2. The interfaces
