@@ -1,0 +1,72 @@
+# Spike for ADR-0005 (docs/spikes/2026-10-21-term-representation).
+name: spike-term-representation
+on:
+  push:
+    branches: [spike/term-representation]
+  workflow_dispatch:
+
+env:
+  SPIKE_DIR: docs/spikes/2026-10-21-term-representation
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: windows-msvc, exe: build/Release/spike.exe, asan_exe: build-asan/Release/spike.exe }
+          - { os: ubuntu-latest, name: linux-gcc, exe: build/spike, asan_exe: build-asan/spike }
+          - { os: macos-latest, name: macos-clang, exe: build/spike, asan_exe: build-asan/spike }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record the CPU
+        run: |
+          mkdir -p out
+          case "$RUNNER_OS" in
+            Linux) lscpu | grep -E '^(Model name|CPU\(s\))' > out/cpu.txt; free -g >> out/cpu.txt ;;
+            macOS) sysctl -n machdep.cpu.brand_string hw.ncpu hw.memsize > out/cpu.txt ;;
+            Windows) pwsh -NoProfile -Command '$p = Get-CimInstance Win32_Processor; $p.Name; $p.NumberOfLogicalProcessors; (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory' > out/cpu.txt ;;
+          esac
+      - name: Configure and build
+        run: |
+          cmake -S "$SPIKE_DIR" -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+      - name: Run
+        run: ${{ matrix.exe }} out
+      - name: Configure and build with sanitizers
+        run: |
+          cmake -S "$SPIKE_DIR" -B build-asan -DCMAKE_BUILD_TYPE=Release -DSPIKE_SANITIZE=ON
+          cmake --build build-asan --config Release
+      - name: Put the MSVC AddressSanitizer runtime on PATH
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dll = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter clang_rt.asan_dynamic-x86_64.dll | Where-Object FullName -like '*Hostx64\x64*' | Select-Object -First 1
+          $dll.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Run with sanitizers (small sizes)
+        run: ${{ matrix.asan_exe }} out-asan quick
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spike-${{ matrix.name }}
+          path: |
+            out/
+            out-asan/
+
+  compare:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+      - name: Results must be byte-identical on all three systems
+        run: |
+          for d in spike-*; do echo "== $d"; cat "$d/out/cpu.txt" "$d/out/info.txt" "$d/out/timings.txt" "$d/out/memory.txt"; done
+          diff spike-linux-gcc/out/results.txt spike-windows-msvc/out/results.txt
+          diff spike-linux-gcc/out/results.txt spike-macos-clang/out/results.txt
+          cat spike-linux-gcc/out/results.txt
