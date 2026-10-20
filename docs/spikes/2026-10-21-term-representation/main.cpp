@@ -908,8 +908,38 @@ void host_begin(tante_builder* b) { as_builder(b)->begin(); }
 void host_add_symbol(tante_builder* b, std::uint32_t s, std::uint32_t p) { as_builder(b)->add_symbol(s, p); }
 void host_copy_rest(tante_builder* b, const tante_term* t) { as_builder(b)->copy_rest(as_words(t)); }
 void host_end(tante_builder* b) { as_builder(b)->end(); }
+std::uint32_t host_term_symbols(const tante_term* t, std::uint32_t* pairs, std::uint32_t capacity)
+{
+    const DirectView v{as_words(t)};
+    const std::uint32_t n = v.symbol_count();
+    const std::uint32_t m = n < capacity ? n : capacity;
+    for (std::uint32_t i = 0; i < m; ++i) {
+        const SymPow x = v.symbol_at(i);
+        pairs[2 * i] = x.first;
+        pairs[2 * i + 1] = x.second;
+    }
+    return n;
+}
+void host_builder_write(tante_builder* b, const std::uint32_t* pairs, std::uint32_t count, const tante_term* rest)
+{
+    TermBuilder& tb = *as_builder(b);
+    tb.begin();
+    for (std::uint32_t i = 0; i < count; ++i) {
+        tb.add_symbol(pairs[2 * i], pairs[2 * i + 1]);
+    }
+    tb.copy_rest(as_words(rest));
+    tb.end();
+}
 
-const tante_host g_host = {1, &host_symbol_count, &host_symbol_at, &host_begin, &host_add_symbol, &host_copy_rest, &host_end};
+const tante_host g_host = {1,
+                           &host_symbol_count,
+                           &host_symbol_at,
+                           &host_begin,
+                           &host_add_symbol,
+                           &host_copy_rest,
+                           &host_end,
+                           &host_term_symbols,
+                           &host_builder_write};
 
 // ---------------------------------------------------------------------------------------
 // Running and reporting.
@@ -1072,6 +1102,14 @@ void run_calls(Report& rep, const tante_module_functions& fns, const char* name,
         }
         sum_c = s;
     });
+    std::int64_t sum_bulk = 0;
+    const double read_bulk = median_seconds(reps, [&] {
+        std::int64_t s = 0;
+        for (const std::size_t o : in.offsets) {
+            s += fns.sum_of_powers_bulk(&g_host, reinterpret_cast<const tante_term*>(base + o));
+        }
+        sum_bulk = s;
+    });
 
     std::vector<std::uint32_t> out_direct;
     const double write_direct = median_seconds(reps, [&] {
@@ -1095,6 +1133,17 @@ void run_calls(Report& rep, const tante_module_functions& fns, const char* name,
                                    reinterpret_cast<tante_builder*>(&tb), x);
         }
     });
+    std::vector<std::uint32_t> out_bulk;
+    const double write_bulk = median_seconds(reps, [&] {
+        out_bulk.clear();
+        out_bulk.reserve(in.words.size() + 2 * n);
+        TermBuilder tb;
+        tb.out = &out_bulk;
+        for (const std::size_t o : in.offsets) {
+            fns.multiply_by_symbol_bulk(&g_host, reinterpret_cast<const tante_term*>(base + o),
+                                        reinterpret_cast<tante_builder*>(&tb), x);
+        }
+    });
 
     const std::uint64_t d_direct = digest_flat(out_direct);
     const std::uint64_t d_c = digest_flat(out_c);
@@ -1102,20 +1151,26 @@ void run_calls(Report& rep, const tante_module_functions& fns, const char* name,
                  static_cast<long long>(sum_direct), static_cast<unsigned long long>(d_direct));
     rep.check(sum_direct == sum_c, "sum_of_powers direct vs C interface");
     rep.check(d_direct == d_c, "multiply_by_symbol direct vs C interface");
+    rep.check(sum_direct == sum_bulk, "sum_of_powers direct vs C interface, bulk");
+    rep.check(d_direct == digest_flat(out_bulk), "multiply_by_symbol direct vs C interface, bulk");
     const double rd = ns_per_term(read_direct, n);
     const double rc = ns_per_term(read_c, n);
+    const double rb = ns_per_term(read_bulk, n);
     const double wd = ns_per_term(write_direct, n);
     const double wc = ns_per_term(write_c, n);
-    std::fprintf(rep.timings, "call %-8s n=%-9zu read   direct %7.1f  C %7.1f ns/term  ratio %.2f\n", name, n, rd, rc,
-                 rc / rd);
-    std::fprintf(rep.timings, "call %-8s n=%-9zu write  direct %7.1f  C %7.1f ns/term  ratio %.2f\n", name, n, wd, wc,
-                 wc / wd);
+    const double wb = ns_per_term(write_bulk, n);
+    std::fprintf(rep.timings,
+                 "call %-8s n=%-9zu read   direct %7.1f  C %7.1f  C-bulk %7.1f ns/term  ratios %.2f %.2f\n", name, n,
+                 rd, rc, rb, rc / rd, rb / rd);
+    std::fprintf(rep.timings,
+                 "call %-8s n=%-9zu write  direct %7.1f  C %7.1f  C-bulk %7.1f ns/term  ratios %.2f %.2f\n", name, n,
+                 wd, wc, wb, wc / wd, wb / wd);
     std::fflush(rep.timings);
 }
 
 std::FILE* open_file(const std::filesystem::path& p)
 {
-    std::FILE* f = std::fopen(p.string().c_str(), "w");
+    std::FILE* f = std::fopen(p.string().c_str(), "wb"); // binary: the same line endings everywhere
     if (f == nullptr) {
         std::fprintf(stderr, "cannot write %s\n", p.string().c_str());
         std::exit(2);
