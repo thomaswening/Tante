@@ -20,6 +20,11 @@ Vocabulary, for a .NET reader:
 - A **word** is the fixed-size unsigned integer the encoding is counted in, here 32 bits (C#'s `uint`). Every field (a kind, a length, a symbol number, a power, a 32-bit chunk of a large number) is one word.
 - A **view** is a read-only cursor over words someone else owns, like `ReadOnlySpan<byte>` read with `Utf8JsonReader`. A **builder** writes a new term, like `Utf8JsonWriter`. Neither owns or copies the term.
 - **Type–length–value**: each block begins with its kind and its length, so a reader can skip a block it does not understand, as a `BinaryReader` skips a length-prefixed record.
+- **Canonical order**: the one fixed order in which factors and terms are written, so that equal expressions are stored and printed identically ([REQ-012](../requirements.md#req-012)); `y·x` is stored as `x·y`. The record on canonical order fixes its rules.
+- **Table of ranks**: an array, indexed by symbol number, giving the position of the symbol's name in alphabetical order, so that the order can depend on names rather than on creation order. The [spike](../spikes/2026-10-21-term-representation.md#terms-used) has an example.
+- **Limb**: one word-sized digit of a large number.
+- **Long form**: a field too large for one word is written as a marker word followed by two words holding a 64-bit value.
+- In a layout such as `[length] [SYM]? [factor]* [coefficient]`, as in regular expressions, `?` means zero or one and `*` zero or more.
 
 The measurements are in the [term-representation spike](../spikes/2026-10-21-term-representation.md) (three CI runs on Windows, Linux and macOS, results byte-identical on all three):
 - The flat 32-bit encoding was 1.6 to 4.4 times smaller than a tree of reference-counted nodes, and sorted 1.1 to 3.5 times faster.
@@ -33,13 +38,14 @@ Thomas decided points 1, 2 and 6 and the spike on 20 and 21 October 2026, after 
 
 **A term is one contiguous block of 32-bit words with no pointers, made of type–length–value blocks and ending in a coefficient that is either a rational number or a rational function. An expression is a stream of such terms behind a storage interface. Only the core's encoding classes know the layout; all other code, modules included, reads terms through views and writes them through builders.**
 
+The term ¾·x²·y·f(a + b) as one block of 37 words; each part of the expression becomes one block that starts with its kind and its length (lines mean "followed in memory by"):
+
+```mermaid
+flowchart LR
+    L["<b>length</b><br/>37"] --- SYM["<b>SYM</b> = x²·y<br/>SYM · 6 · x · 2 · y · 1"] --- FUN["<b>FUN</b> = f(a + b)<br/>FUN · 25 · f · ARG · 22 · [term a] · [term b]"] --- COEF["<b>COEF</b> = ¾<br/>COEF · 5 · 1 · 3 · 4"]
 ```
-¾·x²·y·f(a + b)
-[37]                                   length of the term in words
-  [SYM   6 | x 2  y 1]                 symbols with their powers, in canonical order
-  [FUN  25 | f | ARG 22 | [10 a·1] [10 b·1] ]  a function; each argument is an expression of whole terms
-  [COEF  5 | 1 | 3 | 4]                coefficient: numerator limb count, numerator 3, denominator 4
-```
+
+Each argument term is itself a complete 10-word term, `[10] [SYM · 4 · a · 1] [COEF · 5 · 1 · 1 · 1]`. In `COEF`, the third word is the numerator's limb count; the numerator and denominator limbs follow.
 
 1. **Flat and pointer-free (Thomas: option a).** A term is `[length] [SYM]? [factor blocks]* [coefficient]`; each block is `[kind, length, payload]`. Function arguments are expressions encoded inline as complete terms, at any depth. A term can be copied with `memcpy`, written to disk unchanged and compared by scanning words. A reader skips any block whose kind it does not handle.
 2. **32-bit words (Thomas, confirmed by the spike).** In native byte order in memory (all supported platforms are little-endian); the saved format defines its own ([REQ-100](../requirements.md#req-100), the record on the binary save format). **Powers are signed** (1/x, Laurent series of [REQ-093](../requirements.md#req-093)). **No field caps a size** ([REQ-098](../requirements.md#req-098)): a length, power or count that does not fit in one word uses a long form (a marker word followed by a 64-bit value), and numbers have as many 32-bit limbs as they need.
@@ -49,6 +55,24 @@ Thomas decided points 1, 2 and 6 and the spike on 20 and 21 October 2026, after 
 6. **Only the core knows the layout (Thomas: opaque handles).** One pair of classes in `tante_core`, the term view and the term builder, reads and writes the words. Modules see terms as opaque handles with accessor functions in the C module interface; the layout is part of no public contract, so it can change within a major version.
 7. **Built-in modules call the core directly (Thomas, 21 October 2026).** Because the C interface failed the 1.25 rule, [ADR-0004](0004-library-first-target-structure.md)'s remedy applies from the start: `tante/module.hpp` has a second implementation that calls the core directly, and the built-in modules compile against it. CI also builds and tests them against the C implementation, so the C interface stays exercised. Third-party modules pay the measured cost.
 8. **Room for indices and tensors ([REQ-017](../requirements.md#req-017)).** Block kinds are reserved now for indices, vectors, and tensors (functions whose symmetry and commutation properties live in the tables of point 4). Their contents are defined when the second release adds them; a first-release reader skips them by their length.
+
+Who touches the words (points 5 to 7):
+
+```mermaid
+flowchart LR
+    subgraph store["expression storage (point 5)"]
+        direction TB
+        W["1. append terms"] --> S["2. sort, merging equal terms"] --> R["3. read in order"]
+    end
+    subgraph core["tante_core"]
+        V["term view<br/>(reads words)"]
+        B["term builder<br/>(writes words)"]
+    end
+    store <--> core
+    ST["engine statements"] --> V & B
+    BI["built-in modules<br/>(module.hpp, direct implementation)"] -->|"direct calls, inlined (point 7)"| V & B
+    TP["third-party modules<br/>(module.hpp, C implementation)"] -->|"C module interface:<br/>opaque handles (point 6)"| C["C functions in tante_core"] --> V & B
+```
 
 ## Alternatives considered
 
