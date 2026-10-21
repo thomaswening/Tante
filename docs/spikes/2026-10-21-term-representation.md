@@ -2,6 +2,22 @@
 
 Date: 21 October 2026 | For: the record on term representation, [ADR-0004](../adr/0004-library-first-target-structure.md) (Consequences), [REQ-054](../requirements.md#req-054), [REQ-056](../requirements.md#req-056), [REQ-074](../requirements.md#req-074), [REQ-098](../requirements.md#req-098)
 
+## Terms used
+
+- **Canonical order**: the one fixed order in which the engine writes the factors inside a term and the terms of an expression, so that two equal expressions are stored and printed identically ([REQ-012](../requirements.md#req-012)). For example, `y·x` and `x·y` are both stored as `x·y`, and `b + a` and `a + b` both as `a + b`. The record on canonical order fixes the real rules; this spike uses a simple stand-in.
+- **Table of ranks**: symbols get numbers in the order a script creates them, but [REQ-012](../requirements.md#req-012) requires the order to depend on their names. So the engine keeps an array, indexed by symbol number, giving the position of each symbol's name in alphabetical order. For a script that creates `z`, `a` and `m`, in that order:
+
+  | symbol | number (creation order) | rank (alphabetical order) |
+  |---|---|---|
+  | `z` | 0 | 2 |
+  | `a` | 1 | 0 |
+  | `m` | 2 | 1 |
+
+  Comparing two symbols then means comparing `rank[i]` with `rank[j]`, one array lookup each, instead of `i` with `j`. In .NET terms, it is like `OrderBy(id => rank[id])` instead of `OrderBy(id => id)`.
+- **Limb**: one word-sized digit of a large number. A 96-digit integer takes ten 32-bit limbs or five 64-bit limbs.
+- **Hash-consing**: *cons* is Lisp's word for building a node. A hash-consing engine keeps a hash table of every node it has built. Before building a new node, it looks for an equal one and returns that instead, so every distinct subexpression exists once and is shared. It is like `string.Intern` in .NET. It saves memory when subexpressions repeat, and costs a lookup in a global table for every node built.
+- **Inlining**: the compiler copies a function's body into its caller, so no call happens at run time. It is impossible across a shared-library boundary, because the compiler of one side never sees the other side's code.
+
 ## Question
 
 Before the record on term representation fixes how a term is stored (Thomas, 21 October 2026: a flat encoding, 32-bit words, opaque handles for modules):
@@ -14,24 +30,82 @@ Before the record on term representation fixes how a term is stored (Thomas, 21 
 
 The code lives on the branch `spike/term-representation`, which is kept and not merged. Final state: commit [`fc7f28a`](https://github.com/thomaswening/Tante/tree/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation). It uses only the C++ standard library, so the CI jobs need no vcpkg.
 
-- **The encoding** ([`main.cpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/main.cpp)). A term is `[length] [SYM block]? [FUN block]* [COEF block]`. Each block starts with its kind and its own length in words, so that a reader can skip any block. `SYM` holds (symbol, power) pairs in canonical order; `FUN` holds a function number and its arguments, each an expression of complete terms; `COEF` holds a rational number as word-sized limbs. The same code is compiled with 32-bit and 64-bit words.
-- **The tree baseline**: a term is a node, allocated with `std::make_shared`, holding vectors of (symbol, power) pairs, functions whose arguments are vectors of shared pointers to terms, and the coefficient as vectors of 64-bit limbs. It is a plain tree, as in GiNaC or SymEngine without their hash-consing. Its size is the heap memory in use as the allocator rounds it (`malloc_usable_size`, `malloc_size`, `_msize`), plus 16 bytes for the pointer in the expression's array.
-- **Workloads**, generated deterministically (SplitMix64), 10⁶ terms each:
-  - `poly4`: monomials in 4 symbols, powers 0 to 31, coefficients up to 2²⁰, so a third of the terms merge with another.
-  - `poly20`: 20 of 40 symbols, powers 1 to 3; no merges.
-  - `bigcoef`: as `poly4`, with coefficients of about 96 decimal digits.
-  - `nested`: as `poly4` with powers 0 to 7, times `f(a + b)` with a two-term argument.
+### The two representations, on one example
+
+The term ¾·x²·y·f(a + b) has three parts: a coefficient, symbols with powers, and a function whose single argument is itself an expression of two terms.
+
+```
+   ¾     ·     x² · y     ·     f(a + b)
+ coefficient   symbols          function, whose argument is the expression a + b
+```
+
+**As a tree** (the baseline): every box is a separate object on the heap and every arrow a pointer, so the term is scattered over memory. Like a graph of C# class instances, each with references to the next.
+
+```mermaid
+flowchart TB
+    T["term node<br/>coefficient: 3/4"] --> S["vector of (symbol, power)<br/>(x, 2), (y, 1)"]
+    T --> F["function node: f"]
+    F --> A["argument: vector of pointers to terms"]
+    A --> Ta["term node: a<br/>coefficient 1"]
+    A --> Tb["term node: b<br/>coefficient 1"]
+    Ta --> Sa["vector: (a, 1)"]
+    Tb --> Sb["vector: (b, 1)"]
+```
+
+**Flat** (the encoding measured): the same term is one contiguous block of 37 words with no pointers. Each part of the expression becomes one block, and every block starts with its kind and its own length:
+
+```mermaid
+flowchart LR
+    L["<b>length</b><br/>37"] --- SYM["<b>SYM block</b> = x²·y<br/>SYM · 6 · x · 2 · y · 1"] --- FUN["<b>FUN block</b> = f(a + b)<br/>FUN · 25 · f · ARG · 22 · [term a] · [term b]"] --- COEF["<b>COEF block</b> = ¾<br/>COEF · 5 · 1 · 3 · 4"]
+```
+
+The lines mean "followed in memory by". Inside the argument, each of `a` and `b` is a complete term of 10 words, encoded the same way: `[10] [SYM · 4 · a · 1] [COEF · 5 · 1 · 1 · 1]`. In the `COEF` block, the third word says how many limbs the numerator has (here 1); the numerator and denominator limbs follow.
+
+The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in regular expressions, `?` means zero or one and `*` means zero or more: a term has exactly one length word, at most one `SYM` block (none if it has no symbols), any number of `FUN` blocks, and exactly one `COEF` block. Because every block states its length, a reader can skip a block it does not handle.
+
+### What was measured
+
+- **The encoding** ([`main.cpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/main.cpp)), as drawn above. `SYM` holds (symbol, power) pairs in canonical order; `FUN` holds a function number and its arguments, each an expression of complete terms; `COEF` holds a rational number as limbs. The same code is compiled with 32-bit and 64-bit words.
+- **The tree baseline**, as drawn above. Each term node is allocated with `std::make_shared`; it holds vectors of (symbol, power) pairs, functions whose arguments are vectors of shared pointers to terms, and the coefficient as vectors of 64-bit limbs. It is a plain tree, as in GiNaC or SymEngine without their hash-consing. Its size is the heap memory in use as the allocator rounds it (`malloc_usable_size`, `malloc_size`, `_msize`), plus 16 bytes for the pointer in the expression's array.
+- **Workloads**, generated deterministically (SplitMix64), 10⁶ terms each. The example terms show the shape; the numbers are illustrative.
+
+  | Workload | What varies | Example term |
+  |---|---|---|
+  | `poly4` | 4 symbols `x, y, z, w`, powers 0 to 31 (power 0 leaves the symbol out), coefficients up to 2²⁰. A third of the terms merge with another. | `734821 · x³ · z¹⁷ · w⁵` |
+  | `poly20` | 20 of the 40 symbols `s0` to `s39`, powers 1 to 3. No merges. | `5213 · s0² · s3 · s4³ · s7 · …` (20 symbols) |
+  | `bigcoef` | as `poly4`, with coefficients of about 96 decimal digits | `30591207…448113 · x⁹ · y · z²` |
+  | `nested` | as `poly4` with powers 0 to 7, times one function `f0` or `f1` whose argument has two terms, each one of the symbols `a, b, c, d` | `12345 · x² · w⁷ · f1(2·a + 3·c²)` |
 
   `poly4` was also run with 10⁷ terms in the two flat encodings.
 - **Sorting** sorts an array of offsets to the terms (as FORM sorts pointers to terms) with `std::sort`, then writes one term per run of equal terms with the coefficients added. The order is the spike's stand-in for canonical order: symbols, then functions, then (inside arguments) coefficients. Symbols are compared either by their number ("id") or through a table of ranks ("rank"). The record on canonical order decides the real one.
-- **The module call** ([`spike_module.h`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/spike_module.h), [`module.cpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module.cpp), [`module_logic.hpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module_logic.hpp)). The module is a shared library, so neither side can inline the other's code. It receives a table of engine functions and sees terms only as opaque handles, as [ADR-0004](../adr/0004-library-first-target-structure.md) decided. Its code is written once against a wrapper API and compiled three ways:
-  - **direct**: into the engine, against a wrapper that reads the encoding itself. This is [ADR-0004](../adr/0004-library-first-target-structure.md)'s second wrapper.
-  - **C**: in the library, against a wrapper with one C call per symbol.
-  - **C-bulk**: in the library, against a wrapper with one C call per term to read all symbols, and one to write the new term.
-
-  It runs two functions on every term of `poly4` and `poly20`:
-  - *read*: the sum of the powers of the symbols.
+- **The module call** ([`spike_module.h`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/spike_module.h), [`module.cpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module.cpp), [`module_logic.hpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module_logic.hpp)). The module's own code (`module_logic.hpp`) is written once against a small C++ API: `symbol_count()` and `symbol_at(i)` to read a term, and `begin()`, `add_symbol(s, p)`, `copy_rest(term)` and `end()` to write one. The **wrapper** is whatever class implements that API. In .NET terms, the module code is a generic method constrained on an interface, and the wrapper is the struct that implements it. The spike has three wrappers, so the same module code runs three ways. It runs two functions on every term of `poly4` and `poly20`:
+  - *read*: the sum of the powers of the symbols;
   - *write*: multiply the term by a symbol, giving a new term through the engine's builder.
+
+  ```mermaid
+  flowchart TB
+      subgraph D["direct: module code compiled into the engine"]
+          E1["engine loop over terms"] -->|"inlined: no call at all"| W1["module code reads<br/>and writes the words itself"]
+      end
+      subgraph C["C: module in a shared library, one call per symbol"]
+          E2["engine loop over terms"] -->|"1 call per term"| M2["module function"]
+          M2 -->|"1 call for the count,<br/>then 1 call per symbol read<br/>and 1 per symbol written"| H2["engine's C functions"]
+      end
+      subgraph B["C-bulk: module in a shared library, one call per term"]
+          E3["engine loop over terms"] -->|"1 call per term"| M3["module function"]
+          M3 -->|"1 call copies all symbols out;<br/>1 call writes the new term"| H3["engine's C functions"]
+      end
+  ```
+
+  Calls made for one `poly4` term with 4 symbols:
+
+  | Path | *read* | *write* | What it stands for |
+  |---|---|---|---|
+  | direct | 0 | 0 | [ADR-0004](../adr/0004-library-first-target-structure.md)'s second wrapper: a built-in module compiled with the core |
+  | C | 6 | 13 or 14 | a third-party module using the C interface as decided in [ADR-0004](../adr/0004-library-first-target-structure.md) |
+  | C-bulk | 2 | 3 | a variant of the C interface with bulk accessors, tried as a possible remedy |
+
+  The *write* count is 1 to enter the module, 1 for the count, 4 reads, `begin`, 4 or 5 `add_symbol` calls (5 when the symbol is new to the term), `copy_rest` and `end`.
 - **Checks.** Every representation prints its result in one text form, and the program fails unless the following give the same FNV-1a digest:
   - the 32-bit, 64-bit and tree sorts;
   - the direct and C calls.
