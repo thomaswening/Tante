@@ -1,6 +1,6 @@
 # Spike: a flat, pointer-free term encoding with 32-bit words is smaller and sorts faster than 64-bit words or a tree, and a module call through the C interface costs 1.2 to 1.8 times a direct call when it rewrites a term
 
-Date: 21 October 2026 | For: the record on term representation, [ADR-0004](../adr/0004-library-first-target-structure.md) (Consequences), [REQ-054](../requirements.md#req-054), [REQ-056](../requirements.md#req-056), [REQ-074](../requirements.md#req-074), [REQ-098](../requirements.md#req-098)
+Date: 21 October 2026 | For: [ADR-0005](../adr/0005-term-representation.md), [ADR-0004](../adr/0004-library-first-target-structure.md) (Consequences), [REQ-054](../requirements.md#req-054), [REQ-056](../requirements.md#req-056), [REQ-074](../requirements.md#req-074), [REQ-098](../requirements.md#req-098)
 
 ## Terms used
 
@@ -234,4 +234,4 @@ The CPUs are those of GitHub's virtual machines: AMD EPYC 9V74 and EPYC 7763 are
 - **The rank table costs about 5 %.** Canonical order by name ([REQ-012](../requirements.md#req-012)) is affordable. The record on canonical order decides whether to pay it on every comparison or to renumber symbols in name order at each sort.
 - **The pass rule fails, so the direct wrapper comes now.** A call through the C interface costs 1.2 to 1.8 times a direct call when it rewrites a term, against the rule of 1.25. So [ADR-0004](../adr/0004-library-first-target-structure.md)'s remedy applies from the start: built-in modules compile against a second implementation of the C++ wrapper that calls the core directly, and CI also builds and tests them through the C interface. Third-party modules pay the measured cost, about 1 to 12 % of a sorting stage. Bulk accessors are not adopted on this evidence; the wrapper can still adopt them later without changing any module's code.
 
-Adopted in the record on term representation, which links this report.
+Adopted in [ADR-0005](../adr/0005-term-representation.md).
