@@ -16,6 +16,8 @@ Date: 21 October 2026 | For: the record on term representation, [ADR-0004](../ad
   Comparing two symbols then means comparing `rank[i]` with `rank[j]`, one array lookup each, instead of `i` with `j`. In .NET terms, it is like `OrderBy(id => rank[id])` instead of `OrderBy(id => id)`.
 - **Limb**: one word-sized digit of a large number. A 96-digit integer takes ten 32-bit limbs or five 64-bit limbs.
 - **Hash-consing**: *cons* is Lisp's word for building a node. A hash-consing engine keeps a hash table of every node it has built. Before building a new node, it looks for an equal one and returns that instead, so every distinct subexpression exists once and is shared. It is like `string.Intern` in .NET. It saves memory when subexpressions repeat, and costs a lookup in a global table for every node built.
+- **Allocator rounding**: the heap hands out memory in a fixed set of block sizes, in steps of 16 bytes on these three systems, so that any type stored in a block is correctly aligned. A request for 20 bytes gets a 24- or 32-byte block, and the rest of the block cannot be used for anything else. The unit is bytes, not bits: nothing smaller than a byte can be allocated. The allocator also keeps a few bytes of bookkeeping per block, which the spike's figures leave out.
+- **FNV-1a** (Fowler–Noll–Vo): a small, fast hash function. The spike prints each result as text and hashes the text to a 64-bit fingerprint; equal fingerprints mean equal printed results, the way two files are compared by their checksums. It is not secure against collisions made on purpose, which does not matter here.
 - **Inlining**: the compiler copies a function's body into its caller, so no call happens at run time. It is impossible across a shared-library boundary, because the compiler of one side never sees the other side's code.
 
 ## Question
@@ -43,14 +45,15 @@ The term ¾·x²·y·f(a + b) has three parts: a coefficient, symbols with power
 
 ```mermaid
 flowchart TB
-    T["term node<br/>coefficient: 3/4"] --> S["vector of (symbol, power)<br/>(x, 2), (y, 1)"]
+    T["term node: the product ¾·x²·y·f(a + b)"] --> C0["coefficient: 3/4"]
+    T --> S["vector of (symbol, power)<br/>(x, 2), (y, 1)"]
     T --> F["function node: f"]
     F --> A["argument: vector of pointers to terms"]
-    A --> Ta["term node: a<br/>coefficient 1"]
-    A --> Tb["term node: b<br/>coefficient 1"]
-    Ta --> Sa["vector: (a, 1)"]
-    Tb --> Sb["vector: (b, 1)"]
+    A --> Ta["term node: a<br/>symbols (a, 1), coefficient 1"]
+    A --> Tb["term node: b<br/>symbols (b, 1), coefficient 1"]
 ```
+
+The root is the term itself, the product of its parts; none of the three parts is the root, and no rule ranks one above the others. The coefficient is drawn as a child of the product here. In the spike's code, as in GiNaC's product node, the coefficient is stored inside the product node rather than in a node of its own, because it is a plain number that every product has.
 
 **Flat** (the encoding measured): the same term is one contiguous block of 37 words with no pointers. Each part of the expression becomes one block, and every block starts with its kind and its own length:
 
@@ -59,7 +62,7 @@ flowchart LR
     L["<b>length</b><br/>37"] --- SYM["<b>SYM block</b> = x²·y<br/>SYM · 6 · x · 2 · y · 1"] --- FUN["<b>FUN block</b> = f(a + b)<br/>FUN · 25 · f · ARG · 22 · [term a] · [term b]"] --- COEF["<b>COEF block</b> = ¾<br/>COEF · 5 · 1 · 3 · 4"]
 ```
 
-The lines mean "followed in memory by". Inside the argument, each of `a` and `b` is a complete term of 10 words, encoded the same way: `[10] [SYM · 4 · a · 1] [COEF · 5 · 1 · 1 · 1]`. In the `COEF` block, the third word says how many limbs the numerator has (here 1); the numerator and denominator limbs follow.
+The lines mean "followed in memory by". Inside the argument, each of `a` and `b` is a complete term of 10 words, encoded the same way: `[10] [SYM · 4 · a · 1] [COEF · 5 · 1 · 1 · 1]`. In the `COEF` block, the third word says how many limbs the numerator has (here 1); the numerator and denominator limbs follow. Both can be large integers. The denominator's limb count is not stored because the block's length already fixes it: denominator limbs = block length − 3 − numerator limbs, here 5 − 3 − 1 = 1.
 
 The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in regular expressions, `?` means zero or one and `*` means zero or more: a term has exactly one length word, at most one `SYM` block (none if it has no symbols), any number of `FUN` blocks, and exactly one `COEF` block. Because every block states its length, a reader can skip a block it does not handle.
 
@@ -77,7 +80,17 @@ The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in re
   | `nested` | as `poly4` with powers 0 to 7, times one function `f0` or `f1` whose argument has two terms, each one of the symbols `a, b, c, d` | `12345 · x² · w⁷ · f1(2·a + 3·c²)` |
 
   `poly4` was also run with 10⁷ terms in the two flat encodings.
-- **Sorting** sorts an array of offsets to the terms (as FORM sorts pointers to terms) with `std::sort`, then writes one term per run of equal terms with the coefficients added. The order is the spike's stand-in for canonical order: symbols, then functions, then (inside arguments) coefficients. Symbols are compared either by their number ("id") or through a table of ranks ("rank"). The record on canonical order decides the real one.
+- **Sorting.** All terms of an expression sit one after another in one large buffer of words. An *offset* is the position in that buffer where a term starts, so an *array of offsets* is an index of the terms: `[0, 16, 37, …]` says the first term starts at word 0, the second at word 16, and so on. Sorting reorders this small array with `std::sort` instead of moving the terms themselves, which would mean copying many words; FORM sorts pointers to terms for the same reason. In .NET terms, it is `Array.Sort(offsets, comparer)`, where the comparer looks both terms up in the buffer.
+
+  After sorting, terms with the same factors stand next to each other, whatever their coefficients. Such a group is a *run*, and the merge writes each run as one term whose coefficient is the sum (illustrative numbers):
+
+  ```
+  sorted:   3·x²·y   5·x²·y   1·x²·y   2·x·y³   7·z
+            └─────── one run ──────┘
+  merged:   9·x²·y   2·x·y³   7·z
+  ```
+
+  The order is the spike's stand-in for canonical order: symbols, then functions, then (inside arguments) coefficients. Symbols are compared either by their number ("id") or through a table of ranks ("rank"). The record on canonical order decides the real one.
 - **The module call** ([`spike_module.h`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/spike_module.h), [`module.cpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module.cpp), [`module_logic.hpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module_logic.hpp)). The module's own code (`module_logic.hpp`) is written once against a small C++ API: `symbol_count()` and `symbol_at(i)` to read a term, and `begin()`, `add_symbol(s, p)`, `copy_rest(term)` and `end()` to write one. The **wrapper** is whatever class implements that API. In .NET terms, the module code is a generic method constrained on an interface, and the wrapper is the struct that implements it. The spike has three wrappers, so the same module code runs three ways. It runs two functions on every term of `poly4` and `poly20`:
   - *read*: the sum of the powers of the symbols;
   - *write*: multiply the term by a symbol, giving a new term through the engine's builder.
@@ -106,6 +119,19 @@ The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in re
   | C-bulk | 2 | 3 | a variant of the C interface with bulk accessors, tried as a possible remedy |
 
   The *write* count is 1 to enter the module, 1 for the count, 4 reads, `begin`, 4 or 5 `add_symbol` calls (5 when the symbol is new to the term), `copy_rest` and `end`.
+
+  The difference between C and C-bulk, on reading the term `x³·z¹⁷·w⁵`:
+
+  ```
+  C, one call per symbol                       C-bulk, one call per term
+  symbol_count()  -> 3                         term_symbols(buffer) -> 3,
+  symbol_at(0)    -> (x, 3)                        buffer = (x, 3) (z, 17) (w, 5)
+  symbol_at(1)    -> (z, 17)
+  symbol_at(2)    -> (w, 5)                    then reads its own buffer, no calls
+  4 calls into the engine                      1 call into the engine
+  ```
+
+  In .NET terms, it is the difference between a chatty interface (one call per property across a boundary) and a chunky one (one call that returns everything).
 - **Checks.** Every representation prints its result in one text form, and the program fails unless the following give the same FNV-1a digest:
   - the 32-bit, 64-bit and tree sorts;
   - the direct and C calls.
@@ -122,7 +148,14 @@ All three runs gave byte-identical `results.txt` on all three systems.
 
 ## Result
 
+The charts are drawn by [`charts.py`](2026-10-21-term-representation/charts.py) from the numbers of run 3; the tables give every value.
+
 **1. Bytes per term.** The flat sizes are exact and identical everywhere. The tree's are heap bytes as each system's allocator rounds them (Linux / macOS / Windows), plus 16 bytes of pointer.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="2026-10-21-term-representation/bytes-per-term-dark.svg">
+  <img alt="Bar chart of bytes per term for each workload: the flat 32-bit encoding is smallest everywhere; 64-bit words double it; the tree is 1.6 to 4.4 times the 32-bit size, most of all for nested terms." src="2026-10-21-term-representation/bytes-per-term-light.svg">
+</picture>
 
 | Workload | flat, 32-bit | flat, 64-bit | tree | tree ÷ flat 32 |
 |---|---|---|---|---|
@@ -135,7 +168,12 @@ All three runs gave byte-identical `results.txt` on all three systems.
 
 **2. Sorting and merging**, ns per input term, 10⁶ terms (10⁷ in the last row). The 64-bit and tree columns show their time relative to flat 32-bit with ranks.
 
-| Workload | System | flat 32, id | flat 32, rank | flat 64, rank | tree, rank |
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="2026-10-21-term-representation/sort-time-dark.svg">
+  <img alt="Three bar charts, one per system, of sorting time per term for each workload: flat 32-bit is fastest everywhere, 64-bit slightly slower, the tree slowest, most of all for nested terms on Windows." src="2026-10-21-term-representation/sort-time-light.svg">
+</picture>
+
+| Workload | System (runner's CPU) | flat 32, id | flat 32, rank | flat 64, rank | tree, rank |
 |---|---|---|---|---|---|
 | `poly4` | Linux (EPYC 9V74) | 501 | 519 | 581 (1.12) | 786 (1.51) |
 | | macOS (M2 Pro) | 316 | 332 | 365 (1.10) | 555 (1.67) |
@@ -151,11 +189,18 @@ All three runs gave byte-identical `results.txt` on all three systems.
 | | Windows | 1187 | 1165 | 1529 (1.31) | 4124 (3.54) |
 | `poly4`, 10⁷ | Linux / macOS / Windows | 651 / 490 / 1043 | 666 / 553 / 1112 | 725 / 566 / 1282 | — |
 
+The CPUs are those of GitHub's virtual machines: AMD EPYC 9V74 and EPYC 7763 are AMD server processors; Apple M2 Pro is Apple's ARM processor. Which one a job gets varies between runs (see *Noise* below).
+
 - 32-bit words sort faster than 64-bit words in every case, by 2 to 32 %.
 - The tree is slower in every case, by 12 % to 3.5 times. The gap is widest with nested functions and on Windows.
 - Comparing symbols through the rank table costs between −2 % and +13 % against comparing their numbers, typically 5 %.
 
 **3. Module call**, ns per term (C or C-bulk ÷ direct in brackets):
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="2026-10-21-term-representation/call-cost-dark.svg">
+  <img alt="Three bar charts, one per system, of the module call's time relative to the direct call: reading costs 1.9 to 7.8 times, writing 1.2 to 1.9 times; almost every bar is above the pass line at 1.25." src="2026-10-21-term-representation/call-cost-light.svg">
+</picture>
 
 | Function | System | direct | C, per symbol | C-bulk, per term |
 |---|---|---|---|---|
