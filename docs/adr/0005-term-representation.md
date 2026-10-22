@@ -1,6 +1,6 @@
 # ADR-0005: A term is a flat, pointer-free block of 32-bit words with a typed coefficient, an expression is a stream of terms behind a storage interface, and only the core knows the layout
 
-- **Status:** Proposed
+- **Status:** Accepted (Thomas, 22 October 2026, by merging [pull request #6](https://github.com/thomaswening/Tante/pull/6))
 - **Date:** 2026-10-21
 
 ## Context
