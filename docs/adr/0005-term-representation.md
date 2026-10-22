@@ -23,7 +23,9 @@ Vocabulary, for a .NET reader:
 - **Canonical order**: the one fixed order in which factors and terms are written, so that equal expressions are stored and printed identically ([REQ-012](../requirements.md#req-012)); `y·x` is stored as `x·y`. The record on canonical order fixes its rules.
 - **Table of ranks**: an array, indexed by symbol number, giving the position of the symbol's name in alphabetical order, so that the order can depend on names rather than on creation order. The [spike](../spikes/2026-10-21-term-representation.md#terms-used) has an example.
 - **Limb**: one word-sized digit of a large number.
-- **Long form**: a field too large for one word is written as a marker word followed by two words holding a 64-bit value.
+- **Field and number** are different things here. A *field* describes structure: a length, a count, a symbol number, a power. A *number* is a value such as a coefficient, stored as a sequence of limbs.
+  - A number is never limited: 3/4 takes one limb each for numerator and denominator, a 96-digit numerator takes ten, and the block's length says how many there are.
+  - A field normally takes one word. A **long form** is for a field too large for one word: a marker word, then two words holding a 64-bit value. 64 bits cover every length and count that can exist (no memory or disk holds 2⁶³ words), so a field never needs a third word.
 - In a layout such as `[length] [SYM]? [factor]* [coefficient]`, as in regular expressions, `?` means zero or one and `*` zero or more.
 
 The measurements are in the [term-representation spike](../spikes/2026-10-21-term-representation.md) (three CI runs on Windows, Linux and macOS, results byte-identical on all three):
@@ -91,6 +93,9 @@ flowchart LR
 - Harder: two coefficient kinds, and adding a `COEF` to a `RATFUN` promotes the number to a constant rational function.
 - Harder: two wrapper implementations to keep in step, mitigated by building the built-in modules against both in CI.
 - Untested, from the spike: the real canonical order; negative and fractional coefficients through GMP; the size and comparison cost of index and tensor blocks; threads and disk; module functions doing real work per term.
-- Follow-up: the record on canonical order fixes the order of blocks and fields, and whether symbols are compared through the rank table on every comparison or renumbered in name order at each sort. The record on the execution model fixes which symbols belong in a `RATFUN`, when normalisation runs and the threading contract of views and builders. The record on pattern matching matches over views. The record on the binary save format fixes byte order and the table of names. The record on errors fixes status codes at the C boundary.
+- Follow-up: the record on canonical order fixes the order of blocks and fields, and how names decide the order of symbols. Two ways, for a script that creates `z`, `a`, `m` (numbers 0, 1, 2):
+  - **Rank table on every comparison:** terms keep the numbers 0, 1, 2; each comparison looks up `rank[0] = 2`, `rank[1] = 0`, `rank[2] = 1` (alphabetical positions). Costs about 5 % in the spike.
+  - **Renumbering at each sort:** before a sort, symbols get new numbers in name order, `a` → 0, `m` → 1, `z` → 2, and terms are rewritten with them, so comparisons compare numbers directly. A symbol created later, say `b`, shifts the numbers again (`m` → 2, `z` → 3) at the next sort.
+- Follow-up: the record on the execution model fixes which symbols belong in a `RATFUN`, when normalisation runs and the threading contract of views and builders. The record on pattern matching matches over views. The record on the binary save format fixes byte order and the table of names. The record on errors fixes status codes at the C boundary.
 - Follow-up: a specification of the encoding, with worked examples of every block kind and its word count, is written together with the term view and builder (Thomas, review of the spike, 22 October 2026).
 - Follow-up: the C module interface gains the term accessors and builder functions measured in the spike; they are added with the first module, by need ([ADR-0004](0004-library-first-target-structure.md)).
