@@ -1,0 +1,66 @@
+# Words check_docs.py should not ask the glossary to define. One per line, then "# reason".
+# For general vocabulary that has no glossary entry. It never exempts a glossary term: a
+# glossary word used in its everyday sense gets <!-- glossary-ignore: word --> in that
+# paragraph or list item instead.
+CPU  # general computing vocabulary
+GNU  # part of the licence's name
+
+# Tante's own names
+AFCAS  # a rejected name candidate, in OPEN-A
+engine  # "the engine" is Tante itself (requirements.md, Requirement conventions)
+
+# Other software, named where the survey cites it
+PARI  # computer-algebra system, cited in prior-art.md
+NTL  # number-theory library, cited in prior-art.md
+FIRE  # Feynman-integral reduction program, cited in prior-art.md
+FERMAT  # computer-algebra system, cited in prior-art.md
+MPC  # complex-number library, cited in prior-art.md
+ARB  # the former Arb library, now part of FLINT (see glossary: ball arithmetic)
+GTK4  # a GUI toolkit, named in prior-art.md
+FUEL  # a rational-function benchmark set, named in the corpus catalogue
+RCP  # SymEngine's reference-counted pointer, explained where it is used
+
+# Authors' initials naming papers
+BCK  # Baikov, Chetyrkin, Kühn
+HRUVV  # Herzog, Ruijl, Ueda, Vermaseren, Vogt
+LMMS  # Luthe, Maier, Marquard, Schröder
+MVV  # Moch, Vermaseren, Vogt
+
+# Journals, organisations, grants, events
+PRL  # Physical Review Letters
+CPC  # Computer Physics Communications
+JOSS  # Journal of Open Source Software
+SIGSAM  # ACM's special interest group on symbolic computation
+CERN  # organisation
+STFC  # UK research council, in a grant acknowledgement
+JSPS  # Japanese research society, in a grant acknowledgement
+KAKENHI  # JSPS grant programme
+JP22K03604  # grant number
+JP24K07055  # grant number
+HLRN  # a German supercomputing network
+CAPP  # a conference name
+
+# Hardware and platforms
+AMD  # processor maker
+EPYC  # processor family
+ARM  # processor architecture
+ARM64  # processor architecture
+UCRT64  # an MSYS2 environment
+MSYS2  # Windows build environment, named where vcpkg alternatives are discussed
+
+# General computing and licensing vocabulary
+HTTP  # protocol
+ISO  # standards body
+POSIX  # operating-system standard
+SDK  # software development kit
+SSD  # disk type
+CRLF  # line-ending convention
+README  # file name
+COPYING  # file name
+SPDX  # licence-identifier standard
+NOASSERTION  # a value of GitHub's licence API
+MIT  # a licence that is irrelevant to Tante
+
+# Physics notation, niche or symbols
+NDR  # a γ₅ scheme, mentioned once in prior-art.md
+BMHV  # a γ₅ scheme, mentioned once in prior-art.md

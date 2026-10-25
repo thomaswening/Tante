@@ -4,7 +4,7 @@ Date: 21 October 2026 | For: [ADR-0005](../adr/0005-term-representation.md), [AD
 
 ## Terms used
 
-- **Canonical order**: the one fixed order in which the engine writes the factors inside a term and the terms of an expression, so that two equal expressions are stored and printed identically ([REQ-012](../requirements.md#req-012)). For example, `y·x` and `x·y` are both stored as `x·y`, and `b + a` and `a + b` both as `a + b`. The record on canonical order fixes the real rules; this spike uses a simple stand-in.
+- **Canonical order**: the one fixed order in which the engine writes the factors inside a [term](../glossary.md#term) and the terms of an [expression](../glossary.md#expression), so that two equal expressions are stored and printed identically ([REQ-012](../requirements.md#req-012)). For example, `y·x` and `x·y` are both stored as `x·y`, and `b + a` and `a + b` both as `a + b`. The record on canonical order fixes the real rules; this [spike](../glossary.md#spike) uses a simple stand-in.
 - **Table of ranks**: symbols get numbers in the order a script creates them, but [REQ-012](../requirements.md#req-012) requires the order to depend on their names. So the engine keeps an array, indexed by symbol number, giving the position of each symbol's name in alphabetical order. For a script that creates `z`, `a` and `m`, in that order:
 
   | symbol | number (creation order) | rank (alphabetical order) |
@@ -15,22 +15,22 @@ Date: 21 October 2026 | For: [ADR-0005](../adr/0005-term-representation.md), [AD
 
   Comparing two symbols then means comparing `rank[i]` with `rank[j]`, one array lookup each, instead of `i` with `j`. In .NET terms, it is like `OrderBy(id => rank[id])` instead of `OrderBy(id => id)`.
 - **Limb**: one word-sized digit of a large number. A 96-digit integer takes ten 32-bit limbs or five 64-bit limbs.
-- **Hash-consing**: *cons* is Lisp's word for building a node. A hash-consing engine keeps a hash table of every node it has built. Before building a new node, it looks for an equal one and returns that instead, so every distinct subexpression exists once and is shared. It is like `string.Intern` in .NET. It saves memory when subexpressions repeat, and costs a lookup in a global table for every node built.
-- **Allocator rounding**: the heap hands out memory in a fixed set of block sizes, in steps of 16 bytes on these three systems, so that any type stored in a block is correctly aligned. A request for 20 bytes gets a 24- or 32-byte block, and the rest of the block cannot be used for anything else. The unit is bytes, not bits: nothing smaller than a byte can be allocated. The allocator also keeps a few bytes of bookkeeping per block, which the spike's figures leave out.
+- **Hash-consing**: *cons* is Lisp's word for building a node. A hash-consing engine keeps a hash table of every node it has built. Before building a new node, it looks for an equal one and returns that instead, so every distinct subexpression exists once and is shared. It is like `string.Intern` in .NET. It saves memory when subexpressions repeat, and costs a lookup in a global table for every node built. <!-- glossary-ignore: word -->
+- **Allocator rounding**: the heap hands out memory in a fixed set of block sizes, in steps of 16 bytes on these three systems, so that any type stored in a block is correctly aligned. A request for 20 bytes gets a 24- or 32-byte block, and the rest of the block cannot be used for anything else. The unit is bytes, not bits: nothing smaller than a byte can be allocated. The allocator also keeps a few bytes of bookkeeping per block, which the spike's figures leave out. <!-- glossary-ignore: block -->
 - **FNV-1a** (Fowler–Noll–Vo): a small, fast hash function. The spike prints each result as text and hashes the text to a 64-bit fingerprint; equal fingerprints mean equal printed results, the way two files are compared by their checksums. It is not secure against collisions made on purpose, which does not matter here.
 - **Inlining**: the compiler copies a function's body into its caller, so no call happens at run time. It is impossible across a shared-library boundary, because the compiler of one side never sees the other side's code.
 
 ## Question
 
-Before the record on term representation fixes how a term is stored (Thomas, 21 October 2026: a flat encoding, 32-bit words, opaque handles for modules):
+Before the record on term representation fixes how a term is stored (Thomas, 21 October 2026: a flat encoding, 32-bit [words](../glossary.md#word), [opaque handles](../glossary.md#opaque-handle) for [modules](../glossary.md#module)):
 
 1. How many bytes does a term take in a flat encoding with 32-bit words, with 64-bit words, and as a tree of reference-counted nodes?
-2. How long does it take to sort an expression and add the coefficients of equal terms in each? How much does it cost to compare symbols through a table of ranks by name rather than by their numbers, as canonical order independent of declaration order requires ([REQ-012](../requirements.md#req-012))?
-3. What does it cost per term to call a module function through the C module interface, compared with calling the same code directly? Rule fixed before the run (brief of 20 October 2026): if the C call is within 1.25 times the direct call, [ADR-0004](../adr/0004-library-first-target-structure.md)'s second wrapper implementation is not built yet.
+2. How long does it take to sort an expression and add the [coefficients](../glossary.md#coefficient) of equal terms in each? How much does it cost to compare symbols through a table of ranks by name rather than by their numbers, as canonical order independent of declaration order requires ([REQ-012](../requirements.md#req-012))?
+3. What does it cost per term to call a module function through the C [module interface](../glossary.md#module-interface), compared with calling the same code directly? Rule fixed before the run (brief of 20 October 2026): if the C call is within 1.25 times the direct call, [ADR-0004](../adr/0004-library-first-target-structure.md)'s second wrapper implementation is not built yet.
 
 ## Method
 
-The code lives on the branch `spike/term-representation`, which is kept and not merged. Final state: commit [`fc7f28a`](https://github.com/thomaswening/Tante/tree/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation). It uses only the C++ standard library, so the CI jobs need no vcpkg.
+The code lives on the branch `spike/term-representation`, which is kept and not merged. Final state: commit [`fc7f28a`](https://github.com/thomaswening/Tante/tree/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation). It uses only the C++ standard library, so the CI jobs need no [vcpkg](../glossary.md#vcpkg).
 
 ### The two representations, on one example
 
@@ -55,7 +55,7 @@ flowchart TB
 
 The root is the term itself, the product of its parts; none of the three parts is the root, and no rule ranks one above the others. The coefficient is drawn as a child of the product here. In the spike's code, as in GiNaC's product node, the coefficient is stored inside the product node rather than in a node of its own, because it is a plain number that every product has.
 
-**Flat** (the encoding measured): the same term is one contiguous block of 37 words with no pointers. Each part of the expression becomes one block, and every block starts with its kind and its own length:
+**Flat** (the encoding measured): the same term is one contiguous block of 37 words with no pointers. Each part of the expression becomes one block, and every block starts with its kind and its own length: <!-- glossary-ignore: block -->
 
 ```mermaid
 flowchart LR
@@ -64,7 +64,7 @@ flowchart LR
 
 The lines mean "followed in memory by". Inside the argument, each of `a` and `b` is a complete term of 10 words, encoded the same way: `[10] [SYM · 4 · a · 1] [COEF · 5 · 1 · 1 · 1]`. In the `COEF` block, the third word says how many limbs the numerator has (here 1); the numerator and denominator limbs follow. Both can be large integers. The denominator's limb count is not stored because the block's length already fixes it: denominator limbs = block length − 3 − numerator limbs, here 5 − 3 − 1 = 1.
 
-The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in regular expressions, `?` means zero or one and `*` means zero or more: a term has exactly one length word, at most one `SYM` block (none if it has no symbols), any number of `FUN` blocks, and exactly one `COEF` block. Because every block states its length, a reader can skip a block it does not handle.
+The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in regular expressions, `?` means zero or one and `*` means zero or more: a term has exactly one length word, at most one `SYM` [block](../glossary.md#block) (none if it has no symbols), any number of `FUN` blocks, and exactly one `COEF` block. Because every block states its length, a reader can skip a block it does not handle.
 
 ### What was measured
 
@@ -91,9 +91,9 @@ The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in re
   ```
 
   The order is the spike's stand-in for canonical order: symbols, then functions, then (inside arguments) coefficients. Symbols are compared either by their number ("id") or through a table of ranks ("rank"). The record on canonical order decides the real one.
-- **The module call** ([`spike_module.h`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/spike_module.h), [`module.cpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module.cpp), [`module_logic.hpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module_logic.hpp)). The module's own code (`module_logic.hpp`) is written once against a small C++ API: `symbol_count()` and `symbol_at(i)` to read a term, and `begin()`, `add_symbol(s, p)`, `copy_rest(term)` and `end()` to write one. The **wrapper** is whatever class implements that API. In .NET terms, the module code is a generic method constrained on an interface, and the wrapper is the struct that implements it. The spike has three wrappers, so the same module code runs three ways. It runs two functions on every term of `poly4` and `poly20`:
+- **The module call** ([`spike_module.h`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/spike_module.h), [`module.cpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module.cpp), [`module_logic.hpp`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/docs/spikes/2026-10-21-term-representation/module_logic.hpp)). The module's own code (`module_logic.hpp`) is written once against a small C++ [API](../glossary.md#api): `symbol_count()` and `symbol_at(i)` to read a term, and `begin()`, `add_symbol(s, p)`, `copy_rest(term)` and `end()` to write one. The **wrapper** is whatever class implements that API. In .NET terms, the module code is a generic method constrained on an interface, and the wrapper is the struct that implements it. The spike has three wrappers, so the same module code runs three ways. It runs two functions on every term of `poly4` and `poly20`:
   - *read*: the sum of the powers of the symbols;
-  - *write*: multiply the term by a symbol, giving a new term through the engine's builder.
+  - *write*: multiply the term by a symbol, giving a new term through the engine's [builder](../glossary.md#builder).
 
   ```mermaid
   flowchart TB
@@ -115,7 +115,7 @@ The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in re
   | Path | *read* | *write* | What it stands for |
   |---|---|---|---|
   | direct | 0 | 0 | [ADR-0004](../adr/0004-library-first-target-structure.md)'s second wrapper: a built-in module compiled with the core |
-  | C | 6 | 13 or 14 | a third-party module using the C interface as decided in [ADR-0004](../adr/0004-library-first-target-structure.md) |
+  | C | 6 | 13 or 14 | a third-party module using the [C interface](../glossary.md#c-interface) as decided in [ADR-0004](../adr/0004-library-first-target-structure.md) |
   | C-bulk | 2 | 3 | a variant of the C interface with bulk accessors, tried as a possible remedy |
 
   The *write* count is 1 to enter the module, 1 for the count, 4 reads, `begin`, 4 or 5 `add_symbol` calls (5 when the symbol is new to the term), `copy_rest` and `end`.
@@ -137,7 +137,7 @@ The general shape is `[length] [SYM block]? [FUN block]* [COEF block]`. As in re
   - the direct and C calls.
 
   `results.txt` (sizes, term counts, digests) must be byte-identical on all three systems.
-- **Workflow** ([`spike-term-representation.yml`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/.github/workflows/spike-term-representation.yml)): `windows-latest` (MSVC 19.51), `ubuntu-latest` (GCC 13.3), `macos-latest` (Apple Clang 21) on 2-vCPU (Windows, Linux) and 5-vCPU (macOS) virtual machines. Each job records the CPU, builds in Release, runs the full sizes (medians of 5 repetitions, 3 for 10⁷ terms), then builds with sanitizers and runs small sizes. A final job compares `results.txt`. The C++20 warning flags of [ADR-0001](../adr/0001-cpp20-cmake-vcpkg-guardrails.md) §3 are errors.
+- **Workflow** ([`spike-term-representation.yml`](https://github.com/thomaswening/Tante/blob/fc7f28a320d8ce9c941f8aa218fe67626c1e5e82/.github/workflows/spike-term-representation.yml)): `windows-latest` ([MSVC](../glossary.md#msvc) 19.51), `ubuntu-latest` ([GCC](../glossary.md#gcc) 13.3), `macos-latest` (Apple Clang 21) on 2-vCPU (Windows, Linux) and 5-vCPU (macOS) virtual machines. Each job records the CPU, builds in Release, runs the full sizes (medians of 5 repetitions, 3 for 10⁷ terms), then builds with [sanitizers](../glossary.md#sanitizer) and runs small sizes. A final job compares `results.txt`. The C++20 warning flags of [ADR-0001](../adr/0001-cpp20-cmake-vcpkg-guardrails.md) §3 are errors.
 
 Runs:
 - [39511353324](https://github.com/thomaswening/Tante/actions/runs/39511353324): all checks passed. The comparison failed only because Windows wrote line endings as CRLF; fixed by writing files in binary mode.
@@ -220,7 +220,7 @@ The CPUs are those of GitHub's virtual machines: AMD EPYC 9V74 and EPYC 7763 are
 ## Not tested
 
 - **The real canonical order.** The spike's order is a stand-in; the record on canonical order may compare more fields, or compare them differently.
-- **Real coefficients.** All coefficients were positive integers added with the spike's own limb arithmetic. There were no negative numbers or denominators, and no GMP. Rational arithmetic will add the same cost in every representation, so it narrows the ratios but does not reverse them.
+- **Real coefficients.** All coefficients were positive integers added with the spike's own limb arithmetic. There were no negative numbers or denominators, and no [GMP](../glossary.md#gmp). Rational arithmetic will add the same cost in every representation, so it narrows the ratios but does not reverse them.
 - **A tree with hash-consing or a pool allocator.** Sharing equal subterms would shrink trees with repeated arguments, and a pool allocator would make allocation cheaper. Neither removes the pointers that rule a tree out for [REQ-054](../requirements.md#req-054).
 - **Index and tensor objects** ([REQ-017](../requirements.md#req-017)): their sizes and comparison costs were not measured.
 - **Threads, disk and FORM.** The sorts ran on one thread in memory. Nothing here is a comparison with FORM; the performance spike of [OPEN-F](../requirements.md#open-f) does that.
