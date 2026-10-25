@@ -1,0 +1,72 @@
+# Copied from claude-config, skills/project-docs/assets/docs-weekly.yml.
+# Every Monday, checks main: all of tools/check_docs.py with --main, plus external links with
+# lychee. On failure it opens an issue, or comments on the one still open from an earlier week.
+name: docs-weekly
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays, 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check documents
+        id: docs
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          python tools/check_docs.py . --main 2>&1 | tee docs-check.txt
+
+      - name: Check external links
+        id: links
+        continue-on-error: true
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --no-progress --max-retries 3 "README.md" "docs/**/*.md"
+          output: lychee.md
+          fail: true
+
+      - name: Open or update the issue
+        if: steps.docs.outcome == 'failure' || steps.links.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Weekly docs check failed"
+          {
+            echo "The weekly documentation check of \`main\` failed on $(date -u +'%-d %B %Y'). Run: $RUN_URL"
+            echo
+            if [ -s docs-check.txt ]; then
+              echo "### check_docs.py"
+              echo '```'
+              grep -E '^(error|note):' docs-check.txt | head -100
+              echo '```'
+            fi
+            if [ -s lychee.md ]; then
+              echo "### External links (lychee)"
+              head -c 50000 lychee.md
+            fi
+          } > body.md
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file body.md
+          else
+            gh issue create --title "$title" --body-file body.md
+          fi
+          exit 1

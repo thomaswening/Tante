@@ -10,8 +10,8 @@ Every commit follows [Conventional Commits](https://www.conventionalcommits.org/
 
 Decided by Thomas, 25 October 2026.
 
-- **Two layers.** Project records (requirements, ADRs, spikes, architecture, roadmap) live in `docs/`. User documentation will live in `docs/user/`, sorted into tutorials, how-to guides, reference and explanation ([Diátaxis](https://diataxis.fr/)). Each subfolder is created with its first document.
-- **Terms.** A term of art is linked to the [glossary](glossary.md) on its first use in each document, e.g. `[limb](glossary.md#limb)`. A new term gets a glossary entry in the same pull request that first uses it.
+- **Two layers.** Project records (requirements, [ADRs](glossary.md#adr), [spikes](glossary.md#spike), architecture, roadmap) live in `docs/`. User documentation will live in `docs/user/`, sorted into tutorials, how-to guides, reference and explanation ([Diátaxis](https://diataxis.fr/)). Each subfolder is created with its first document.
+- **Terms.** A term of art is linked to the [glossary](glossary.md) on its first use in each document, e.g. `[limb](glossary.md#limb)`. A new term gets a glossary entry in the same pull request that first uses it. <!-- glossary-ignore: term -->
 - **Mathematics in LaTeX.** Formulas are written in LaTeX, which GitHub renders: inline as `$R_{\mu\nu} = 0$`, displayed between `$$` lines. Plain text is kept for code and for FORM or Tante input.
 - **Language.** British English, sentence-case headings, absolute dates ("21 October 2026"), short declarative sentences.
 - **Links.** Requirements, open decisions, ADRs and other documents are referred to by links, never by bare IDs or paths.

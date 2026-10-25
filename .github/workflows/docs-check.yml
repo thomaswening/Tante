@@ -1,0 +1,29 @@
+# Copied from claude-config, skills/project-docs/assets/docs-check.yml.
+# Checks every pull request's documents with tools/check_docs.py: links and anchors, ADR
+# status, Mermaid diagrams, the requirements' version line, and glossary coverage of the
+# files the pull request changes.
+name: docs-check
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the checker diffs against the base branch
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4 # npx runs mermaid-cli for the Mermaid check
+        with:
+          node-version: "22"
+      - name: Check documents
+        run: python tools/check_docs.py . --base "origin/${{ github.base_ref }}"
+        # Projects with code add their globs, e.g.
+        #   --source "src/**/*.cpp" --tests "tests/**/*.cpp" --repo-url "https://github.com/${{ github.repository }}"
