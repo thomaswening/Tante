@@ -1,11 +1,11 @@
 # Tante: Verifiable Product Requirements
-Version: 0.17 draft | 16 October 2026
+Version: 0.18 draft | 25 October 2026
 
 **Status:**
 
-- Accepted by Thomas as good enough to design against (16 October 2026). Design is under way: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md) to [ADR-0003](adr/0003-flint-gmp-arb-behind-own-interfaces.md) are accepted.
+- Accepted by Thomas as good enough to design against (16 October 2026). Design is under way: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md) to [ADR-0005](adr/0005-term-representation.md) are accepted.
 - The first release is stages 1 to 3 of [OPEN-K](#open-k): polynomials, rational functions, linear algebra. Indices and tensors ([REQ-017](#req-017)), the FORM front end ([REQ-025](#req-025)) and expressions larger than memory ([REQ-054](#req-054)) are design obligations of it.
-- Still open: [OPEN-F](#open-f), in part (the performance factor for polynomial work, and the other numbers, to be confirmed by a spike), and [OPEN-O](#open-o) (b) (reuse of xPerm, at stage 4). Open decisions are collected in [section 13](#open-decisions); how the document got here is in the [revision history](#revision-history).
+- Still open: [OPEN-F](#open-f), in part (the performance factor for polynomial work, and the other numbers, to be confirmed by a spike), [OPEN-O](#open-o) (b) (reuse of xPerm, at stage 4) and [OPEN-R](#open-r) (examples in the user documentation as tests, by the first user document). Open decisions are collected in [section 13](#open-decisions); how the document got here is in the [revision history](#revision-history).
 
 ## Requirement conventions
 **SHALL** = mandatory for the stated release; **SHOULD** = preferred, with an acceptable documented exception; **COULD** = optional or future capability. Each requirement has a stable ID and is never renumbered. Conditions are expressed as **WHEN … THEN …**, **IF … THEN …**, **BEFORE …**, **WHILE …** or **AFTER …**. An implementation technique is not a product requirement unless explicitly stated. Items marked **OPEN** require a decision before they can be treated as acceptance criteria. **OUT OF SCOPE** marks a capability explicitly not required for the first release.
@@ -164,6 +164,8 @@ Version: 0.17 draft | 16 October 2026
 
 <a id="req-091"></a>**REQ-091 — User documentation (SHALL).** User documentation SHALL include a getting-started tutorial, worked tutorials from the corpus ([REQ-070](#req-070)), a reference entry for every statement and function with at least one example, and a guide for FORM users mapping FORM constructs to native ones. Every example SHALL be run by the automated tests, and SHALL fail them if its output changes.
 
+**[OPEN-R](#open-r):** how an example is marked, run and checked.
+
 <a id="req-092"></a>**REQ-092 — Maintainer documentation (SHALL).** Maintainer documentation SHALL include these requirements, the architecture, the decision records, how to build and test, and how to write a module ([REQ-030](#req-030)), so that a developer new to the project can make and test a change without help from its author. Rationale: FORM's difficulty in finding a successor maintainer is, per the intake, a consequence of its maintainer documentation.
 
 ## 12. Licence and governance
@@ -209,6 +211,8 @@ An open decision is resolved immediately before the work that depends on it, not
 
 <a id="open-q"></a>**OPEN-Q — Factorisation.** [REQ-010](#req-010). Raised in the ninth pass (16 October 2026), which Thomas could not yet answer: whether the first release factorises polynomials, that is, writes a polynomial as a product of factors that cannot be split further with rational coefficients — for example x² − y² = (x − y)(x + y), and s²t − t³ = t(s − t)(s + t); x² + 1 stays as it is, since splitting it needs the imaginary unit. It differs from the greatest common divisor (the largest factor two polynomials share) and from normalising a rational function (cancelling common factors of numerator and denominator), both already in [REQ-010](#req-010), neither of which splits a polynomial into its factors. Use in physics: finding the poles of a result in its kinematic variables, partial fractions, and readable results. Cost: multivariate factorisation is algorithmically substantial; FLINT provides it, but the independent implementation of [REQ-097](#req-097) would not, so a factorisation is checked by multiplying the factors back, which shows they are correct but not that they cannot be split further. Proposed: SHALL in the first release, through the library of [REQ-096](#req-096), over the rational numbers only. **Resolved** (Thomas, 16 October 2026, as proposed): [REQ-010](#req-010). **Needed by:** the roadmap.
 
+<a id="open-r"></a>**OPEN-R — Examples that are tests.** [REQ-091](#req-091). Raised on 25 October 2026, when Thomas decided how documentation is organised (user documentation in `docs/user/`, by kind: tutorials, how-to guides, reference and explanation): how an example in the user documentation is marked as one, run by the automated tests, and compared with its expected output. Python's doctest and Rust's documentation tests extract code blocks from the documentation and compare the printed output. FeynCalc's examples cite a textbook equation and fail when the result disagrees ([REQ-070](#req-070)). The answer depends on the syntax of the native language ([REQ-013](#req-013)) and on how the command-line tool prints results, neither of which exists yet. **Needed by:** the first user document.
+
 <a id="revision-history"></a>
 ## 14. Revision history
 
@@ -233,3 +237,4 @@ Each decision is recorded, with who took it and when, in the requirement or open
 | 0.15 | 16 Oct 2026 | 13 | C++20 ([OPEN-E](#open-e)); a GitHub-hosted runner as reference machine ([OPEN-G](#open-g)); 16 GB of memory ([REQ-053](#req-053)); corpus fraction left to the roadmap ([OPEN-D](#open-d)); partial differential equations a later COULD ([OPEN-L](#open-l), [REQ-016](#req-016)); numerical evaluation ([REQ-101](#req-101), [OPEN-M](#open-m)). Accepted for design. |
 | 0.16 | 16 Oct 2026 | 14, during design | [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md) to [ADR-0003](adr/0003-flint-gmp-arb-behind-own-interfaces.md) accepted, recording [OPEN-E](#open-e), [OPEN-P](#open-p) and [OPEN-O](#open-o) (a); [REQ-101](#req-101) proves its digits by ball arithmetic. |
 | 0.17 | 16 Oct 2026 | Editorial | The cumulative status paragraph replaced by a short status and this table; no requirement changed. |
+| 0.18 | 25 Oct 2026 | 15, during design | Added [OPEN-R](#open-r), how examples in the user documentation become tests ([REQ-091](#req-091)); the status names [ADR-0004](adr/0004-library-first-target-structure.md) and [ADR-0005](adr/0005-term-representation.md) as accepted. |
