@@ -10,6 +10,11 @@ A document links a term on its first use, e.g. `[word](glossary.md#word)`. Ancho
 
 Fixed labels after an entry relate it to others: **Kind of** names the broader term, **See also** related terms, **Not to be confused with** a look-alike with another meaning, **Defined in** the document whose wording governs, **After FORM** what Tante took from FORM and what it changed.
 
+<a id="adapter"></a>**adapter** *(engineering)*: the one piece of code that connects an interface of Tante's own to an external library or a storage medium. Only an adapter includes that library's headers. In .NET terms it is the class that implements your own `IRepository` over Entity Framework. Example: `tante_poly_flint` implements Tante's polynomial interface with FLINT.
+
+- See also: [include check](#include-check), [target](#target)
+- Defined in: [ADR-0003](adr/0003-flint-gmp-arb-behind-own-interfaces.md), [ADR-0004](adr/0004-library-first-target-structure.md)
+
 <a id="adr"></a>**ADR** (architecture decision record) *(engineering)*: a short document recording one significant, hard-to-reverse decision with its context, the alternatives and the consequences. Example: [ADR-0005](adr/0005-term-representation.md) records how terms are encoded. Each record is proposed in its own pull request and accepted by merging it.
 
 - Defined in: [the ADR index](adr/README.md)
@@ -21,6 +26,10 @@ Fixed labels after an entry relate it to others: **Kind of** names the broader t
 <a id="api"></a>**API** (application programming interface) *(engineering)*: the functions and types a library offers to programs that use it. In .NET terms it is an assembly's public surface. Example: FORM is a program with no library API, so other programs can only run it and read its output.
 
 - See also: [C interface](#c-interface)
+
+<a id="arc42"></a>**arc42** *(engineering)*: a standard outline for architecture documents, a fixed list of sections: goals, constraints, context, solution strategy, building blocks, runtime view, cross-cutting concepts, decisions, risks (arc42.org). Example: [architecture.md](architecture.md) follows it.
+
+- Defined in: [architecture.md](architecture.md)
 
 <a id="ball-arithmetic"></a>**ball arithmetic** *(domain)*: arithmetic on intervals written as a midpoint and a radius, where every result is guaranteed to contain the exact value. Example: $\pi$ as $[3.14159265 \pm 4 \times 10^{-9}]$. Tante evaluates numerically through FLINT's ball arithmetic (formerly the Arb library).
 
@@ -64,6 +73,11 @@ Fixed labels after an entry relate it to others: **Kind of** names the broader t
 
 - Not to be confused with: [the FORM corpus](#form-corpus)
 - Defined in: [requirements.md, Requirement conventions](requirements.md#requirement-conventions); [REQ-070](requirements.md#req-070)
+
+<a id="dollar-variable"></a>**dollar variable** *(engineering)*: a FORM variable whose name starts with `$` and whose value carries from one term to the next. Example: `$n = $n + 1;` counts the terms. When terms are processed by several threads, FORM runs such a step on one thread unless the script says how to combine the threads' values.
+
+- After FORM: Tante requires a declared reduction (sum, maximum, minimum), or runs the step on one thread and says so ([REQ-074](requirements.md#req-074) (b)).
+- Defined in: [architecture.md, section 7.1](architecture.md#71-form-concepts-req-025)
 
 <a id="expression"></a>**expression** *(project)*: a mathematical object the engine holds and transforms: a sum of [terms](#term). Example: $x^2 + 2x + 1$ has three terms. In memory and on disk, an expression is a stream of terms behind a storage interface.
 
@@ -165,6 +179,11 @@ Example: a corpus entry ([REQ-070](requirements.md#req-070)).
 
 - Defined in: [ADR-0004](adr/0004-library-first-target-structure.md); [ADR-0005](adr/0005-term-representation.md#decision), points 6 and 7
 
+<a id="module-wrapper"></a>**module wrapper** *(project)*: the C++ header `tante/module.hpp` that module authors write against. It gives them [RAII](#raii) handles and exceptions over the C module interface. It has two implementations: one calls the C module interface, the other calls the core directly and is used by the built-in modules for speed.
+
+- See also: [module interface](#module-interface)
+- Defined in: [ADR-0004](adr/0004-library-first-target-structure.md), [ADR-0005](adr/0005-term-representation.md)
+
 <a id="mpfr"></a>**MPFR** *(engineering)*: a C library for floating-point numbers of chosen precision with correct rounding, built on GMP. It is a dependency of FLINT. Tante does not call it directly. Licence: LGPL-3.0-or-later.
 
 - See also: [GMP](#gmp), [FLINT](#flint)
@@ -194,6 +213,11 @@ Example: $\zeta(2) = \pi^2/6$. MZVs appear in Feynman integrals. FORM computed a
 
 - See also: [REQ-010](requirements.md#req-010)
 
+<a id="preprocessor"></a>**preprocessor** *(engineering)*: a stage that rewrites the text of a script before it is parsed. FORM's preprocessor has loops, conditions and procedures, which FORM scripts use for program logic. Example: `#do i = 1, 3` … `#enddo` repeats the lines between three times, with `i` replaced by 1, 2 and 3.
+
+- Not to be confused with: the C preprocessor, which Tante's own C++ code uses for `#include`.
+- Defined in: [architecture.md, section 7.1](architecture.md#71-form-concepts-req-025)
+
 <a id="qcd"></a>**QCD** (quantum chromodynamics) *(domain)*: the quantum field theory of the strong interaction between quarks and gluons, with colour group SU(3).
 
 - Kind of: [QFT](#qft)
@@ -203,6 +227,10 @@ Example: $\zeta(2) = \pi^2/6$. MZVs appear in Feynman integrals. FORM computed a
 - Kind of: [QFT](#qft)
 
 <a id="qft"></a>**QFT** (quantum field theory) *(domain)*: the framework of particle physics, in which particles are excitations of fields. Most of FORM's large calculations are QFT calculations.
+
+<a id="quality-goal"></a>**quality goal** *(engineering)*: how well a system must do all of its work, as opposed to what it does. Quality goals cut across every feature. Tante ranks six, and the higher one wins when two conflict. Example: determinism ranks above speed, so terms from several threads are merged in a fixed order.
+
+- Defined in: [architecture.md, section 1](architecture.md#1-goals)
 
 <a id="raii"></a>**RAII** (resource acquisition is initialisation) *(engineering)*: the C++ rule that an object releases its resources in its destructor, which runs automatically when the object goes out of scope. In .NET terms it is like `using` with `IDisposable`, except that nothing has to be written at the point of use.
 
@@ -235,22 +263,54 @@ Example: $\zeta(2) = \pi^2/6$. MZVs appear in Feynman integrals. FORM computed a
 
 - See also: [REQ-070](requirements.md#req-070)
 
+<a id="runtime-view"></a>**runtime view** *(engineering)*: a picture of what the parts of a system do, in order, while it runs, usually a sequence diagram. The building-block diagram shows which parts exist. The runtime view shows how they call each other. Example: [section 6 of architecture.md](architecture.md#6-runtime-view) follows one script from the command-line tool to the store.
+
+- Kind of: a section of [arc42](#arc42)
+- Defined in: [architecture.md](architecture.md)
+
 <a id="sanitizer"></a>**sanitizer** *(engineering)*: a compiler option that adds run-time checks for a class of bugs. Example: AddressSanitizer stops the program at an out-of-bounds access instead of letting it read garbage.
 
 - See also: [static analysis](#static-analysis)
 - Defined in: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md#3-guardrails-for-a-maintainer-learning-c)
 
+<a id="shared-library"></a>**shared library** *(engineering)*: machine code loaded at run time, a `.dll`, `.so` or `.dylib`, like an assembly. Unlike an assembly it has no compiler-neutral metadata, so C++ types work across it only with the compiler that built it. Plain C functions and types work with any compiler. Example: a third-party compiled module is a shared library.
+
+- Not to be confused with: [static library](#static-library)
+- Defined in: [ADR-0004](adr/0004-library-first-target-structure.md)
+
 <a id="spike"></a>**spike** *(engineering)*: a short, throw-away experiment run to measure something before a decision. Its report lives in `docs/spikes/`. Its code stays on a branch that is never merged. Example: the [term-representation spike](spikes/2026-10-21-term-representation.md).
+
+<a id="stage"></a>**stage** *(project)*: a section of a calculation that ends when the expression is sorted and equal terms are merged. Example: in a FORM script, every statement before the first `.sort` belongs to the first stage.
+
+- After FORM: the idea and FORM's `.sort`. Where a stage ends in the native language is for the record on the execution model.
+- Not to be confused with: the six stages of [OPEN-K](requirements.md#open-k), the order in which Tante's capabilities are built. Stage 5 there is the FORM front end.
+- See also: [store](#store)
+- Defined in: [architecture.md, section 6](architecture.md#6-runtime-view)
 
 <a id="static-analysis"></a>**static analysis** *(engineering)*: checking source code for bugs without running it. Tante uses clang-tidy, which plays the part of the Roslyn analyzers in .NET.
 
 - See also: [sanitizer](#sanitizer)
 - Defined in: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md#3-guardrails-for-a-maintainer-learning-c)
 
+<a id="static-library"></a>**static library** *(engineering)*: machine code that the linker copies into the executable at build time, a `.lib` or `.a`, as if every referenced assembly were merged into one executable. Example: `tante_core` is a static library compiled into the command-line tool `tante`.
+
+- Not to be confused with: [shared library](#shared-library)
+- Defined in: [ADR-0004](adr/0004-library-first-target-structure.md)
+
+<a id="store"></a>**store** *(project)*: where an expression's terms are kept, behind an interface with three phases: append terms, sort them while merging equal terms, read them in order. It offers no random access and no count of terms, so it can keep the terms in memory or on disk. Example: `tante_store_memory` comes first; a store on disk is added for [REQ-054](requirements.md#req-054).
+
+- See also: [expression](#expression), [stage](#stage)
+- Defined in: [ADR-0005](adr/0005-term-representation.md)
+
 <a id="table-of-ranks"></a>**table of ranks** *(project)*: an array, indexed by symbol number, giving the position of each symbol's name in alphabetical order. Example: for `z`, `a`, `m` (numbers 0, 1, 2), the ranks are 2, 0, 1.
 
 - See also: [renumbering](#renumbering)
 - Defined in: [term-representation spike](spikes/2026-10-21-term-representation.md#terms-used); [ADR-0005](adr/0005-term-representation.md)
+
+<a id="target"></a>**target** *(engineering)*: a unit of a CMake build, a library or an executable with its own sources and dependencies, like a project in a .NET solution. Example: `tante_core` is a target, and the command-line tool `tante` is another.
+
+- See also: [static library](#static-library)
+- Defined in: [ADR-0004](adr/0004-library-first-target-structure.md)
 
 <a id="term"></a>**term** *(domain)*: one product of a coefficient and factors (symbols, functions, later indices and tensors). Example: $\tfrac34 x^2 y\, f(a+b)$ is one term. $x + y$ is two. In Tante, a term is one contiguous sequence of [words](#word).
 
@@ -274,6 +334,10 @@ Example: $\zeta(2) = \pi^2/6$. MZVs appear in Feynman integrals. FORM computed a
 
 - See also: [builder](#builder)
 - Defined in: [ADR-0005](adr/0005-term-representation.md)
+
+<a id="wildcard"></a>**wildcard** *(engineering)*: a placeholder in a pattern that matches any object of its kind and names it for the replacement. Example: in FORM's `id f(x?) = x^2;` the wildcard `x?` matches any argument, so $f(a)$ becomes $a^2$.
+
+- Defined in: [REQ-011](requirements.md#req-011)
 
 <a id="word"></a>**word** *(project)*: the 32-bit unsigned integer Tante's term encoding is counted in, C#'s `uint`. Every [field](#field-and-number) is one word.
 
