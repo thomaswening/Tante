@@ -1,4 +1,4 @@
-# check_docs.py 1.1 (claude-config project-docs)
+# check_docs.py 1.2 (claude-config project-docs)
 """Check a project's documents and code for drift: links, anchors, IDs, ADRs, diagrams, glossary.
 
     check_docs.py [repo-root] [--source GLOB ...] [--tests GLOB ...] [--repo-url URL]
@@ -18,7 +18,7 @@ Links (every Markdown file under docs/, and README.md):
 ADRs (when docs/adr/ exists):
   * every record's Status matches its row in docs/adr/README.md; with --main, none is Proposed;
   * a record whose title names an OPEN-x links it, and the OPEN entry links back to the record.
-Mermaid: every ```mermaid block parses (needs Node's npx; skipped locally without it, an error in CI).
+Mermaid: every ```mermaid or ~~~mermaid block parses (needs Node's npx; skipped locally without it, an error in CI).
 Roadmap (when docs/roadmap.md exists): every open OPEN entry's Needed by note names a roadmap phase,
   and each phase's Needs line lists exactly the OPENs that name it.
 With --base REF (a pull request's base branch):
@@ -284,6 +284,7 @@ def check_roadmap(docs, opens, errors):
         errors.append("docs/roadmap.md: no phase headings ('### Phase N: Name') found")
         return
     named = {anchor: set() for anchor in phases}
+    unplaced = set()  # open, but rule A already reported its note: missing or naming no phase
     by_number = {v[0]: anchor for anchor, v in phases.items()}
     for oid, entry in sorted(opens.items()):
         if not is_open(entry):
@@ -291,6 +292,7 @@ def check_roadmap(docs, opens, errors):
         m = re.search(r"\*\*Needed by:?\*\*:?(.*?)(?=\*\*[A-Z(]|\Z)", entry, re.S)
         if not m:
             errors.append(f"docs/requirements.md: {oid} is open but has no **Needed by:** note")
+            unplaced.add(oid)
             continue
         note = m[1]
         targets = {a for a in re.findall(r"roadmap\.md#([\w-]+)", note) if a in phases}
@@ -298,6 +300,7 @@ def check_roadmap(docs, opens, errors):
         if not targets:
             errors.append(f"docs/requirements.md: {oid}'s Needed by note names no roadmap phase "
                           f"('Phase N' or a link to roadmap.md#phase-...)")
+            unplaced.add(oid)
         for a in targets:
             named[a].add(oid)
     for anchor, (number, line, needs) in phases.items():
@@ -309,7 +312,7 @@ def check_roadmap(docs, opens, errors):
         for oid in sorted(named[anchor] - needs):
             errors.append(f"{where}: Phase {number}'s Needs line lacks {oid}, whose Needed by names it")
         for oid in sorted(needs - named[anchor]):
-            if oid in opens and is_open(opens[oid]):
+            if oid in opens and is_open(opens[oid]) and oid not in unplaced:
                 errors.append(f"{where}: Phase {number} needs {oid}, whose Needed by note names another phase")
 
 
@@ -319,10 +322,11 @@ def check_mermaid(md_files, root, errors, notes):
         lines = read(md).splitlines()
         i = 0
         while i < len(lines):
-            if re.match(r"^\s*```\s*mermaid\s*$", lines[i]):
+            opening = re.match(r"^\s*(```|~~~)\s*mermaid\s*$", lines[i])
+            if opening:
                 start, body = i + 1, []
                 i += 1
-                while i < len(lines) and not FENCE.match(lines[i]):
+                while i < len(lines) and not lines[i].lstrip().startswith(opening[1]):
                     body.append(lines[i])
                     i += 1
                 blocks.append((md, start, "\n".join(body)))
