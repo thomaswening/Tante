@@ -37,6 +37,10 @@ jobs:
         id: links
         continue-on-error: true
         uses: lycheeverse/lychee-action@v2
+        env:
+          # Without a token, github.com links run into GitHub's limit for anonymous requests
+          # and come back as 429 or 504.
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           args: --no-progress --max-retries 3 "README.md" "docs/**/*.md"
           output: lychee.md
