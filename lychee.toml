@@ -2,7 +2,7 @@
 # lychee reads this file from the repository root. docs/development.md, "Weekly external-link
 # check", says why each exclusion is here and when to remove it.
 
-# Slow academic servers (gmplib.org, nikhef.nl) took longer than lychee's default of 20 seconds.
+# More than lychee's default of 20 seconds, for slow academic servers.
 timeout = 60
 max_retries = 3
 
@@ -16,4 +16,9 @@ exclude = [
   '^https://mvnrepository\.com/',
   # DESY's Indico serves attachments only to browsers.
   '^https://indico\.desy\.de/.*/attachments/',
+
+  # Hosts that never answer GitHub's runners, although they answer a browser within a second.
+  # They timed out at 60 seconds in the run of 10 November 2026. Checked by hand that day.
+  '^https://gmplib\.org/',
+  '^https://(www|indico)\.nikhef\.nl/',
 ]

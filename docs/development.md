@@ -32,11 +32,13 @@ Every Monday at 06:00 UTC, [docs-weekly.yml](../.github/workflows/docs-weekly.ym
 | `https://doi.org/10.1103/…` (APS) | excluded | the publisher answers 403 to automated requests |
 | `https://github.com/…` | accepted | the workflow passes a token, so GitHub's limit for anonymous requests does not apply |
 | a slow host that answers within 60 seconds | accepted | three retries |
+| `https://gmplib.org/�`, `https://www.nikhef.nl/�` | excluded | the host never answers GitHub's runners, although it answers a browser |
 
 **When it fails.** Open each reported link in a browser.
 
 - The page is gone: link its new address. If there is none, link an archived copy from the [Wayback Machine](https://web.archive.org/) and say so in the citation, as for Ruijl's 2023 slides in [prior art](prior-art.md).
 - The page opens in a browser but lychee gets 403 every week: add a pattern for that site to `lychee.toml`, with the reason and the date it was checked.
+- The host times out week after week but opens in a browser within seconds: it drops requests from GitHub's runners. Add a pattern to `lychee.toml` as for a 403.
 - The failure is a one-off timeout or 5xx: wait for the next week. Excluding it would hide a real breakage later.
 
 Close the issue once the run is clean. The run can be started by hand: Actions → docs-weekly → Run workflow.
