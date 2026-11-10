@@ -64,3 +64,5 @@ MIT  # a licence that is irrelevant to Tante
 # Physics notation, niche or symbols
 NDR  # a γ₅ scheme, mentioned once in prior-art.md
 BMHV  # a γ₅ scheme, mentioned once in prior-art.md
+UTC  # time zone, in the weekly-check schedule (development.md)
+APS  # American Physical Society, a publisher (lychee.toml exclusions)

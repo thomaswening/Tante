@@ -1,0 +1,19 @@
+# Settings for the external-link check of the weekly docs run (.github/workflows/docs-weekly.yml).
+# lychee reads this file from the repository root. docs/development.md, "Weekly external-link
+# check", says why each exclusion is here and when to remove it.
+
+# Slow academic servers (gmplib.org, nikhef.nl) took longer than lychee's default of 20 seconds.
+timeout = 60
+max_retries = 3
+
+# Sites that answer every automated request with 403 Forbidden, although the page is there in a
+# browser. Checked by hand on 9 November 2026.
+exclude = [
+  # DOIs of APS (10.1103), ACM (10.1145) and PeerJ (10.7717): doi.org redirects to the publisher,
+  # whose bot protection refuses the request.
+  '^https://doi\.org/10\.(1103|1145|7717)/',
+  # Maven repository listing (Cloudflare bot protection).
+  '^https://mvnrepository\.com/',
+  # DESY's Indico serves attachments only to browsers.
+  '^https://indico\.desy\.de/.*/attachments/',
+]
