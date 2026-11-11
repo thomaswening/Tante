@@ -54,7 +54,8 @@ class Area:
     may_include: tuple[str, ...]
 
 
-# The dependency rules of docs/architecture.md#dependency-rules. An arrow in its
+# The dependency rules of docs/architecture.md#dependency-rules, drawn as a
+# diagram in docs/tools/check_architecture.md. An arrow in its
 # diagram means "may use", and so does a chain of arrows, except where a rule
 # says "only":
 # - the command-line tool: REQ-064, docs/requirements.md#req-064
@@ -131,10 +132,12 @@ class Finding:
 
 @dataclass(frozen=True)
 class Include:
-    path: str
-    line_number: int
-    header: str
-    is_quoted: bool
+    """One #include line, e.g. line 3 of src/core/term.cpp: #include "arith/rational.hpp"."""
+
+    path: str  # the including file, relative to the repository: "src/core/term.cpp"
+    line_number: int  # counted from 1: 3
+    header: str  # what is between the quotes or brackets: "arith/rational.hpp"
+    is_quoted: bool  # True for "...", False for <...>
 
 
 def check_repository(root: Path) -> list[Finding]:

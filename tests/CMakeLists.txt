@@ -3,6 +3,10 @@
 #
 # Each Catch2 TEST_CASE becomes its own CTest test, and its tags become CTest
 # labels, so `ctest -L REQ-064` runs every test of one requirement.
+
+# find_package loads the CMake files that Catch2's vcpkg port installs. They
+# define the target Catch2::Catch2WithMain and put Catch.cmake on the module
+# path. include(Catch) runs Catch.cmake, which defines catch_discover_tests().
 find_package(Catch2 3 CONFIG REQUIRED)
 include(Catch)
 

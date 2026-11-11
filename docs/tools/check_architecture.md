@@ -8,7 +8,13 @@ The job `include-check` of [ci.yml](../../.github/workflows/ci.yml) runs it on e
 
 ## How it reads the code
 
-It reads every `.h`, `.hpp`, `.c` and `.cpp` file under `include/`, `src/`, `modules/`, `examples/` and `tests/`, except inside a folder named `build`. In each file it finds the `#include` lines and sorts each header into one of five kinds, in this order:
+**What an include is.** A C++ file sees another file's declarations only by including it: `#include "tante/version.hpp"` pastes that header's text in place before the compiler reads the file. It is the closest thing C++ has to a `using` directive plus a project reference in .NET, except that nothing checks whether the including project should see the header. Any header on the compiler's search path will do. vcpkg puts the headers of every library in `vcpkg.json` on that path for every target. So without this check, a line in `src/core/` could include `<flint/fmpz.h>` and compile, and FLINT's types would leak into the engine.
+
+**The two spellings.** `#include "…"` (quotes) is the spelling for the project's own headers. `#include <…>` (angle brackets) is for the standard library and third-party libraries. The check uses the spelling only to tell a file in the same folder (`"term.hpp"`) apart from everything else. For the rest, it goes by the header's path.
+
+**Which files.** It reads every `.h`, `.hpp`, `.c` and `.cpp` file under `include/`, `src/`, `modules/`, `examples/` and `tests/`, except inside a folder named `build`. Tante's own headers are included by their path: the public [API](../glossary.md#api) as `tante/version.hpp` (from `include/`), an internal target's header as `core/term_view.hpp` (from `src/`). A header in the same folder may be included by its name alone.
+
+**How it sorts a header.** For each `#include` line it asks five questions in this order. The first answer that fits decides.
 
 ```mermaid
 flowchart TB
@@ -25,11 +31,42 @@ flowchart TB
   standard -- no --> report2["reported: unknown header (rule C)"]
 ```
 
-Tante's own headers are included by their path: the public [API](../glossary.md#api) as `tante/version.hpp` (from `include/`), an internal target's header as `core/term_view.hpp` (from `src/`). A header in the same folder may be included by its name alone.
+Four lines of a file `src/core/term.cpp`, taken through the questions:
+
+| Line | Path climbs out? | Same folder? | Tante's own? | A listed library? | Standard? | Result |
+|---|---|---|---|---|---|---|
+| `#include "term.hpp"` | no | yes | | | | accepted |
+| `#include "arith/rational.hpp"` | no | no | yes: `arith/` | | | rule A: `src/core/` may include `arith/`, so accepted |
+| `#include <gmp.h>` | no | no | no | yes: GMP | | rule B: only `src/arith/` may, so reported |
+| `#include <vector>` | no | no | no | no | yes | accepted |
 
 ## Rule A: a directory includes only the targets it may use
 
 The file's **area** is the longest directory in the table below that contains it. The area names the header prefixes it may include. An arrow in the [building-blocks diagram](../architecture.md#5-building-blocks) means "may use", and so does a chain of arrows, except where a dependency rule says "only".
+
+The same rules as a picture. Each box is an area, and each arrow means "may include". A directory may include whatever its arrows reach, following chains, except along an arrow marked **only**: there the chain stops. The libraries hang off the one area that may include them (rule B). `tests/` may include everything and is left out.
+
+```mermaid
+flowchart TB
+  cli["src/cli/"] -- only --> pub["include/tante/<br/>(public API)"]
+  api["src/api/"] --> pub & lang & form & adapters
+  api --> core
+  lang["src/lang/"] --> core
+  form["src/form/"] --> core
+  core["src/core/"] --> arith & platform & sdk
+  pub --> sdk
+  adapters["src/adapters/flint/, simple/, arb/"] -- only --> arith
+  mods["modules/, examples/"] -- only --> sdk["include/tante/module/<br/>(module SDK)"]
+  arith["src/arith/"]
+  platform["src/platform/"]
+  gmp{{"GMP"}} -.- arith
+  flint{{"FLINT"}} -.- adapters
+  os{{"the operating system"}} -.- platform
+```
+
+Example: `src/api/` reaches `src/arith/` through `src/core/`, so `src/api/` may include `arith/rational.hpp`. `src/cli/` reaches only the public API, because its arrow is marked "only". [MPFR](../glossary.md#mpfr) has no box, since no area may include it.
+
+One gap: the prefix `tante/` also matches the SDK's `tante/module…`, so the check lets `src/cli/` include the SDK's headers, which the picture does not. The SDK arrives in phase 1's last pull request, which closes the gap.
 
 | Area | May include | Because |
 |---|---|---|
@@ -65,7 +102,7 @@ A file in a directory with no row is reported as `no rule for this directory: ad
 |---|---|---|
 | GMP | `gmp.h`, `gmpxx.h` | `src/arith/`, where `Integer` and `Rational` are implemented |
 | FLINT | `flint/…` | `src/adapters/flint/`, `src/adapters/arb/` |
-| [MPFR](../glossary.md#mpfr) | `mpfr.h`, `mpf2mpfr.h` | nowhere: a dependency of FLINT that Tante does not call ([ADR-0003](../adr/0003-flint-gmp-arb-behind-own-interfaces.md) §1) |
+| MPFR | `mpfr.h`, `mpf2mpfr.h` | nowhere: a dependency of FLINT that Tante does not call ([ADR-0003](../adr/0003-flint-gmp-arb-behind-own-interfaces.md) §1) |
 | Catch2 | `catch2/…` | `tests/` |
 | the operating system | `windows.h`, `dlfcn.h`, `unistd.h`, `sys/…`, `mach-o/…` | `src/platform/` ([REQ-050](../requirements.md#req-050)) |
 

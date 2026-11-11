@@ -29,15 +29,25 @@ Tante is built with CMake and gets its libraries through [vcpkg](glossary.md#vcp
 | CMake | 3.28 or later. Visual Studio's own copy will do. | 3.28 or later | 3.28 or later |
 | vcpkg | a clone at the commit in `vcpkg.json`'s `builtin-baseline`, with `VCPKG_ROOT` pointing at it | same | same |
 
-Get vcpkg once, anywhere outside the repository:
+Get vcpkg once, anywhere outside the repository, and set `VCPKG_ROOT` to the folder you cloned it into. The CMake presets find vcpkg through that variable. On Windows, in PowerShell:
+
+```powershell
+git clone https://github.com/microsoft/vcpkg "$HOME\vcpkg"
+git -C "$HOME\vcpkg" checkout c52f7bd748185ef0e0daf033d9f2ddfc8a3449ea
+& "$HOME\vcpkg\bootstrap-vcpkg.bat" -disableMetrics
+[Environment]::SetEnvironmentVariable("VCPKG_ROOT", "$HOME\vcpkg", "User")
+```
+
+The last line sets `VCPKG_ROOT` for your user account, to `C:\Users\<you>\vcpkg`. Only programs started afterwards see it, so restart Visual Studio and open a new terminal. On Linux and macOS, in bash:
 
 ```bash
 git clone https://github.com/microsoft/vcpkg "$HOME/vcpkg"
 git -C "$HOME/vcpkg" checkout c52f7bd748185ef0e0daf033d9f2ddfc8a3449ea
 "$HOME/vcpkg/bootstrap-vcpkg.sh" -disableMetrics
+echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.bashrc
 ```
 
-On Windows run `bootstrap-vcpkg.bat` instead, and set `VCPKG_ROOT` in the system's environment variables. The first configure builds the libraries in `vcpkg.json`. Later configures take them from vcpkg's cache.
+The commit is the one in `vcpkg.json`'s `builtin-baseline`. The first configure builds the libraries in `vcpkg.json`. Later configures take them from vcpkg's cache.
 
 ### Presets
 

@@ -22,8 +22,11 @@ permissions:
   contents: read
 
 env:
-  # The vcpkg commit whose ports CI builds. It must equal builtin-baseline in
-  # vcpkg.json, so CI builds the versions the manifest pins.
+  # vcpkg is a git repository whose commits each fix one version of every
+  # library (a "port"). CI clones vcpkg at this commit. vcpkg.json names the
+  # same commit as its builtin-baseline, and setup-vcpkg fails if the two
+  # differ: otherwise CI would build other library versions than the ones
+  # vcpkg.json pins.
   VCPKG_COMMIT: c52f7bd748185ef0e0daf033d9f2ddfc8a3449ea
   CLANG_TIDY_VERSION: "23.1.4"
   CLANG_FORMAT_VERSION: "23.1.5"
@@ -60,6 +63,9 @@ jobs:
           $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
           $dll = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter clang_rt.asan_dynamic-x86_64.dll | Where-Object FullName -like '*Hostx64\x64*' | Select-Object -First 1
           $dll.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      # Runs the steps below once for each preset of this system's matrix
+      # entry, release first, then the sanitizers. ::group:: folds each
+      # preset's output in the log.
       - name: Configure, build and test each preset
         run: |
           for preset in ${{ matrix.presets }}; do
@@ -83,8 +89,13 @@ jobs:
           python-version: "3.12"
       - name: Install clang-tidy
         run: pip install "clang-tidy==$CLANG_TIDY_VERSION"
+      # Configures only, builds nothing: CMake writes
+      # build/linux-clang-tidy/compile_commands.json, the compiler flags of
+      # each file, which clang-tidy needs to read the code as the compiler does.
       - name: Write the compile commands
         run: cmake --preset linux-clang-tidy
+      # git lists the tracked .cpp files. xargs passes them all to one
+      # clang-tidy call. clang-tidy only reports. It changes no file.
       - name: Run clang-tidy
         run: git ls-files 'src/*.cpp' 'tests/*.cpp' | xargs clang-tidy -p build/linux-clang-tidy --quiet
 
@@ -98,6 +109,7 @@ jobs:
           python-version: "3.12"
       - name: Install clang-format
         run: pip install "clang-format==$CLANG_FORMAT_VERSION"
+      # --dry-run reports what clang-format would change, without changing it.
       - name: Check the layout
         run: git ls-files '*.cpp' '*.hpp' '*.h' '*.c' | xargs clang-format --dry-run --Werror
 

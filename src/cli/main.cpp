@@ -16,7 +16,7 @@ namespace {
 // Exit codes, as in diff(1) and grep(1): 0 success, 2 wrong usage.
 constexpr int kExitUsage = 2;
 
-constexpr std::string_view kUsage{"usage: tante --version\n"};
+constexpr std::string_view kVersionOption{"--version"};
 
 int print_version() {
   std::cout << std::format("tante {}\n", tante::version());
@@ -24,12 +24,12 @@ int print_version() {
 }
 
 int print_usage() {
-  std::cerr << kUsage;
+  std::cerr << std::format("usage: tante {}\n", kVersionOption);
   return kExitUsage;
 }
 
 int run(std::span<char*> arguments) {
-  if (arguments.size() == 1 && std::string_view{arguments.front()} == "--version") {
+  if (arguments.size() == 1 && std::string_view{arguments.front()} == kVersionOption) {
     return print_version();
   }
   return print_usage();
