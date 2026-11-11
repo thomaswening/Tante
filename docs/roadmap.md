@@ -131,7 +131,11 @@ A [spike](glossary.md#spike) measures FORM 5.0.2 and [TFORM](glossary.md#tform) 
 
 ### Phase 10: Linear algebra
 
-The linear-algebra module, built only on the module interface: matrices with symbolic entries, products, transposes, determinants, inverses, rank and null space, and the solution of linear systems, each result with the conditions under which it holds. Runnable: a script finds the rank of $\begin{pmatrix} a & 1 \\ 1 & a \end{pmatrix}$ as 2, valid for $a^2 - 1 \neq 0$.
+The linear-algebra module, built only on the module interface: matrices with symbolic entries, products, transposes, determinants, inverses, rank and null space, and the solution of linear systems, each result with the conditions under which it holds. Runnable: a script finds the rank of the matrix below as 2, valid for $a^2 - 1 \neq 0$.
+
+```math
+\begin{pmatrix} a & 1 \\ 1 & a \end{pmatrix}
+```
 
 - Requirements: [REQ-014](requirements.md#req-014), [REQ-030](requirements.md#req-030) (acceptance)
 - Resolves: nothing
