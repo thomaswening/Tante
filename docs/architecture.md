@@ -1,7 +1,7 @@
 # Tante: Architecture overview
 Draft | 25 October 2026 | Based on requirements v0.19
 
-This document gives an overview of how Tante is built and why. **What** Tante must do is defined in [requirements.md](requirements.md). **Why** each part is built the way it is is recorded in the [architecture decision records](adr/README.md) ([ADRs](glossary.md#adr)), and measured evidence in [spikes](glossary.md#spike). The order of the work will be in the roadmap. Specialist vocabulary is linked to the [glossary](glossary.md) on first use.
+This document gives an overview of how Tante is built and why. **What** Tante must do is defined in [requirements.md](requirements.md). **Why** each part is built the way it is is recorded in the [architecture decision records](adr/README.md) ([ADRs](glossary.md#adr)), and measured evidence in [spikes](glossary.md#spike). The order of the work is in the [roadmap](roadmap.md). Specialist vocabulary is linked to the [glossary](glossary.md) on first use.
 
 The document follows [arc42](glossary.md#arc42), a standard outline for architecture documents. Each part is marked:
 
@@ -172,12 +172,12 @@ The FORM front end arrives at stage 5 ([OPEN-K](requirements.md#open-k)) as a pa
 | `.sort` stages | `.sort` | The end of a stage: the store's sort and merge. How statements, threads and stages fit together is for the record on the execution model. | Open |
 | `id` statements with [wildcards](glossary.md#wildcard) | `id f(x?) = x^2;` | Pattern matching over term views ([REQ-011](requirements.md#req-011)); the record on pattern matching | Open |
 | [Dollar variables](glossary.md#dollar-variable) | `$n = $n + 1;` | Cross-term state with a declared reduction (sum, maximum, minimum), or a step that runs on one thread and says so ([REQ-074](requirements.md#req-074) (b)); the record on the execution model | Open |
-| The [preprocessor](glossary.md#preprocessor) | `#do i = 1, 5` … `#enddo` | **No part of the engine yet.** Candidate: a text stage inside `tante_form` that runs before parsing. The native language has no equivalent. | Open, gap named |
-| Tables | `Table t(1:3); Fill t(1) = x;` | **No part of the engine yet.** Candidate: a function whose values are held in the session's tables. | Open, gap named |
+| The [preprocessor](glossary.md#preprocessor) | `#do i = 1, 5` … `#enddo` | **No part of the engine yet.** Candidate: a text stage inside `tante_form`, with FORM's textual meaning. FORM expands each module after the previous one has run, so the record on the FORM preprocessor decides how expansion interleaves with execution. The native language has no preprocessor ([REQ-013](requirements.md#req-013)). | Open, gap named; [phase 14](roadmap.md#phase-14-preprocessor-tables-and-the-form-corpus) |
+| Tables | `Table t(1:3); Fill t(1) = x;` | **No part of the engine yet.** Candidate: a function whose values are held in the session's tables. Tablebases, tables on disk, come with expressions larger than memory. | Open, gap named; [phase 14](roadmap.md#phase-14-preprocessor-tables-and-the-form-corpus) |
 | `save` and `load` | `save "e.sav";` | The binary save format ([REQ-100](requirements.md#req-100)); the record on the save format | Open |
 | FORM output | `Print;` | A printer for FORM syntax in `tante_form` ([REQ-023](requirements.md#req-023)) | Planned for stage 5 of [OPEN-K](requirements.md#open-k) |
 
-The two named gaps, the preprocessor and tables, are FORM capabilities that no part of Tante's design carries yet. All FORM concepts are to be supported eventually ([OPEN-D](requirements.md#open-d)). The roadmap places these two in a release.
+The two named gaps, the preprocessor and tables, are FORM capabilities that no part of Tante's design carries yet. All FORM concepts are to be supported eventually ([OPEN-D](requirements.md#open-d)). The roadmap places both in the third release, with the FORM front end.
 
 ### 7.2 Indices, vectors and tensors ([REQ-017](requirements.md#req-017))
 
@@ -234,7 +234,7 @@ The concepts a reader needs before the code makes sense. Each is defined in the 
 | [0004](adr/0004-library-first-target-structure.md) | A library of static targets with a thin command-line tool and one C module interface | — | Accepted |
 | [0005](adr/0005-term-representation.md) | Flat, pointer-free terms with a typed coefficient; expressions as streams behind a store | — | Accepted |
 
-Records still to be written, each just before the work that needs it:
+Records still to be written, each just before the phase of the [roadmap](roadmap.md#open-decisions-by-phase) that needs it:
 
 | Record on | Decides | Main requirements |
 |---|---|---|
@@ -243,6 +243,8 @@ Records still to be written, each just before the work that needs it:
 | Pattern matching | Wildcards, conditions, repeated rules, the choice among several matches | [REQ-011](requirements.md#req-011), [REQ-074](requirements.md#req-074) (c) |
 | Binary save format | Byte order, the table of names, versioning, saving state between stages | [REQ-055](requirements.md#req-055), [REQ-100](requirements.md#req-100) |
 | Errors | Status codes at the C boundary, diagnostics, out-of-memory and out-of-disk | [REQ-024](requirements.md#req-024), [REQ-098](requirements.md#req-098) |
+| Native language | Statements, declarations, loops and procedures without a preprocessor, how a script reads close to paper, running statements one at a time | [REQ-013](requirements.md#req-013), [REQ-060](requirements.md#req-060) |
+| FORM preprocessor | How FORM's textual expansion interleaves with the execution of each module | [REQ-020](requirements.md#req-020), [REQ-025](requirements.md#req-025) |
 
 ## 11. Risks
 
@@ -252,5 +254,5 @@ Records still to be written, each just before the work that needs it:
 | Native Windows builds of GMP or FLINT break on a version update. | Portability | The [native-arithmetic spike](spikes/2026-10-16-native-arithmetic-build.md) built them with [MSVC](glossary.md#msvc). vcpkg pins the versions. | A CI failure on Windows only |
 | The C module interface is frozen too early: a function added in the first release stays for the whole major version. | Extensibility | It grows only by need ([ADR-0004](adr/0004-library-first-target-structure.md)). The example module and the built-in modules are its first users. | A function no module calls |
 | The canonical order is too slow, because comparing by names costs time on every comparison. | Scale and speed | Two designs are known: a table of ranks, about 5 % in the [term-representation spike](spikes/2026-10-21-term-representation.md), or renumbering at each sort. The record on canonical order chooses by measurement. | The factor against FORM on sorting-heavy work ([REQ-056](requirements.md#req-056), kind A) |
-| The disk store is unproven until [REQ-054](requirements.md#req-054) is built, so a first-release interface may quietly assume memory. | Scale and speed | The store interface has no random access and no count of terms ([ADR-0005](adr/0005-term-representation.md) point 5). The map in [section 7.3](#73-expressions-larger-than-memory-req-054). | Any code that asks a store how many terms it holds |
+| The disk store is unproven until [REQ-054](requirements.md#req-054) is built, so a first-release interface may quietly assume memory. | Scale and speed | The store interface has no random access and no count of terms ([ADR-0005](adr/0005-term-representation.md) point 5). The map in [section 7.3](#73-expressions-larger-than-memory-req-054). A store on disk used by the tests from [phase 4](roadmap.md#phase-4-execution-model-threads-and-the-step-trace). | Any code that asks a store how many terms it holds |
 | The two wrapper implementations drift apart, so a built-in module works through one and not the other. | Extensibility | CI builds and tests the built-in modules against both ([ADR-0005](adr/0005-term-representation.md) point 7). | A test that passes on one build and fails on the other |
