@@ -1,217 +1,751 @@
 # Tante: Verifiable Product Requirements
-Version: 0.21 draft | 11 November 2026
+Version: 0.22 draft | 12 November 2026
 
 **Status:**
 
-- Accepted by Thomas as good enough to design against (16 October 2026). Design is under way: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md) to [ADR-0005](adr/0005-term-representation.md) are accepted. The order of the work is in the [roadmap](roadmap.md).
-- The first release is stages 1 to 3 of [OPEN-K](#open-k): polynomials, [rational functions](glossary.md#rational-function), linear algebra. Indices and tensors ([REQ-017](#req-017)), the FORM [front end](glossary.md#front-end) ([REQ-025](#req-025)) and [expressions](glossary.md#expression) larger than memory ([REQ-054](#req-054)) are design obligations of it. The first release is an engine preview. The minimum viable product is the third release, which runs existing FORM scripts ([OPEN-K](#open-k)). <!-- glossary-ignore: stage -->
-- Still open: [OPEN-F](#open-f), in part (the performance factor for polynomial work, and the other numbers, to be confirmed by a [spike](glossary.md#spike), by phase 9 of the roadmap), [OPEN-O](#open-o) (b) (reuse of xPerm, by phase 12) and [OPEN-R](#open-r) (examples in the user documentation as tests, by phase 3). Open decisions are collected in [section 13](#open-decisions); how the document got here is in the [revision history](#revision-history). <!-- glossary-ignore: stage -->
+- Accepted by Thomas as good enough to design against (16 October 2026).
+  Design is under way: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md) to [ADR-0005](adr/0005-term-representation.md) are accepted.
+  The order of the work is in the [roadmap](roadmap.md).
+- The first release is stages 1 to 3 of [OPEN-K](#open-k): polynomials, [rational functions](glossary.md#rational-function), linear algebra.
+  Indices and tensors ([REQ-017](#req-017)), the FORM [front end](glossary.md#front-end) ([REQ-025](#req-025)) and [expressions](glossary.md#expression) larger than memory ([REQ-054](#req-054)) are design obligations of it.
+  The first release is an engine preview.
+  The minimum viable product is the third release, which runs existing FORM scripts ([OPEN-K](#open-k)). <!-- glossary-ignore: stage -->
+- Still open: [OPEN-F](#open-f), in part (the performance factor for polynomial work, and the other numbers, to be confirmed by a [spike](glossary.md#spike), by phase 9 of the roadmap), [OPEN-O](#open-o) (b) (reuse of xPerm, by phase 12) and [OPEN-R](#open-r) (examples in the user documentation as tests, by phase 3).
+  Open decisions are collected in [section 13](#open-decisions); how the document got here is in the [revision history](#revision-history). <!-- glossary-ignore: stage -->
 
 ## Requirement conventions
-**SHALL** = mandatory for the stated release; **SHOULD** = preferred, with an acceptable documented exception; **COULD** = optional or future capability. Each requirement has a stable ID and is never renumbered. Conditions are expressed as **WHEN … THEN …**, **IF … THEN …**, **BEFORE …**, **WHILE …** or **AFTER …**. An implementation technique is not a product requirement unless explicitly stated. Items marked **OPEN** require a decision before they can be treated as acceptance criteria. **OUT OF SCOPE** marks a capability explicitly not required for the first release.
 
-**Tante**, **the engine** = the program and library specified here ([OPEN-A](#open-a)). The command-line tool is `tante`, and the Python package of [REQ-062](#req-062) is `tante`.
+**SHALL** = mandatory for the stated release; **SHOULD** = preferred, with an acceptable documented exception; **COULD** = optional or future capability.
+Each requirement has a stable ID and is never renumbered.
+Conditions are expressed as **WHEN … THEN …**, **IF … THEN …**, **BEFORE …**, **WHILE …** or **AFTER …**.
+An implementation technique is not a product requirement unless explicitly stated.
+Items marked **OPEN** require a decision before they can be treated as acceptance criteria.
+**OUT OF SCOPE** marks a capability explicitly not required for the first release.
+
+Each requirement starts with what it requires.
+A list below it gives, where they apply, its acceptance test, an example, its rationale, the evidence behind it and who decided it when.
+
+**Tante**, **the engine** = the program and library specified here ([OPEN-A](#open-a)).
+The command-line tool is `tante`, and the Python package of [REQ-062](#req-062) is `tante`.
 
 **Expression** = a mathematical object the engine holds and transforms: a sum of [terms](glossary.md#term), each a product of a [coefficient](glossary.md#coefficient) and factors (symbols, functions, vectors, indices, tensors).
 
-**Front end** = a language the engine accepts instructions in. There are two: the **native language** ([REQ-013](#req-013)) and **FORM scripts** ([REQ-020](#req-020)). Both are translated into the same internal representation.
+**Front end** = a language the engine accepts instructions in.
+There are two: the **native language** ([REQ-013](#req-013)) and **FORM scripts** ([REQ-020](#req-020)).
+Both are translated into the same internal representation.
 
-**Module** = a unit of capability (new kinds of object, rules, functions, conventions) added to the engine through its public extension interface ([REQ-030](#req-030)). The engine's own domains beyond the core are modules.
+**Module** = a unit of capability (new kinds of object, rules, functions, conventions) added to the engine through its public extension interface ([REQ-030](#req-030)).
+The engine's own domains beyond the core are modules.
 
 **Checkpoint** = a point in a calculation the user marks, at which the engine records the expression so it can be shown, explained or compared ([REQ-040](#req-040)).
 
-**The reference** = FORM (Vermaseren et al., Nikhef; now developed at github.com/form-dev/form), in the version fixed by [OPEN-D](#open-d) — on 15 October 2026, FORM 5.0.2. It is a cross-check and the definition of what a FORM script means; it is not a specification of how the engine is built, and its defects are not to be reproduced ([REQ-004](#req-004)).
+**The reference** = FORM (Vermaseren et al., Nikhef; now developed at github.com/form-dev/form), in the version fixed by [OPEN-D](#open-d) — on 15 October 2026, FORM 5.0.2.
+It is a cross-check and the definition of what a FORM script means.
+It is not a specification of how the engine is built, and its defects are not to be reproduced ([REQ-004](#req-004)).
 
-**The corpus** = the set of calculations with independently known results, each with its source, the inputs, the expected result and what it establishes ([REQ-070](#req-070)). Proposed composition is in [REQ-070](#req-070); candidate entries, by engine stage, are catalogued in [prior-art.md §5](prior-art.md#5-validation-corpus-catalogue). <!-- glossary-ignore: stage -->
+**The corpus** = the set of calculations with independently known results, each with its source, the inputs, the expected result and what it establishes ([REQ-070](#req-070)).
+Proposed composition is in [REQ-070](#req-070); candidate entries, by engine stage, are catalogued in [prior-art.md §5](prior-art.md#5-validation-corpus-catalogue). <!-- glossary-ignore: stage -->
 
-**The FORM corpus** = a set of publicly available FORM scripts with FORM's output for each, used to measure compatibility ([REQ-021](#req-021)). Its selection is [OPEN-D](#open-d).
+**The FORM corpus** = a set of publicly available FORM scripts with FORM's output for each, used to measure compatibility ([REQ-021](#req-021)).
+Its selection is [OPEN-D](#open-d).
 
-**Reference machine** = the machine every performance requirement is stated against: a GitHub-hosted standard Linux runner of GitHub Actions (for public repositories, on 16 October 2026: 4 virtual CPUs, 16 GB of memory, 14 GB of SSD), with Tante and FORM run in the same job ([OPEN-G](#open-g)). Performance is stated as ratios measured within one job, never as absolute times compared across jobs, since the hardware behind a hosted runner varies.
+**Reference machine** = the machine every performance requirement is stated against: a GitHub-hosted standard Linux runner of GitHub Actions (for public repositories, on 16 October 2026: 4 virtual CPUs, 16 GB of memory, 14 GB of SSD), with Tante and FORM run in the same job ([OPEN-G](#open-g)).
+Performance is stated as ratios measured within one job, never as absolute times compared across jobs, since the hardware behind a hosted runner varies.
 
 ## 1. Purpose and users
 
-<a id="req-001"></a>**REQ-001 — Purpose (SHALL).** The engine SHALL perform exact symbolic calculations for physicists, from elementary algebra to calculations too long to do by hand, as (a) a research tool and (b) a learning tool. The research tool is the minimum product; the learning tool is built on it and adds capability, never constraints. WHERE they conflict, the research use SHALL win. Rationale: decided by Thomas in the intake, 15 October 2026; a learner needs what a researcher needs plus intermediate steps and explanations, not something different.
+<a id="req-001"></a>**REQ-001 — Purpose (SHALL).**
+The engine SHALL perform exact symbolic calculations for physicists, from elementary algebra to calculations too long to do by hand, as (a) a research tool and (b) a learning tool.
+The research tool is the minimum product; the learning tool is built on it and adds capability, never constraints.
+WHERE they conflict, the research use SHALL win.
 
-<a id="req-002"></a>**REQ-002 — Researcher (SHALL).** A physicist who knows the mathematics but not the engine's source code SHALL be able to write, run and interpret a calculation from the documentation alone, and SHALL be able to tell from a script what it will compute without reading source code.
+- **Rationale:** a learner needs what a researcher needs plus intermediate steps and explanations, not something different.
+- **Decided:** Thomas, in the intake, 15 October 2026.
 
-<a id="req-003"></a>**REQ-003 — Learner (SHOULD).** A release after the first SHOULD let a learner follow a calculation step by step between checkpoints, with an explanation of each step in mathematical terms, so that they can compare the engine's steps with their own calculation by reading them. This SHALL be built on the checkpoint and step-trace capability of section 4, not as a separate engine.
+<a id="req-002"></a>**REQ-002 — Researcher (SHALL).**
+A physicist who knows the mathematics but not the engine's source code SHALL be able to write, run and interpret a calculation from the documentation alone, and SHALL be able to tell from a script what it will compute without reading source code.
 
-<a id="req-004"></a>**REQ-004 — A new, independent engine (SHALL).** The engine SHALL be a new implementation, not a fork, translation or wrapper of FORM, and SHALL NOT be a layer over another computer-algebra system's core. Behaviour SHALL be reproduced from FORM where a FORM script's meaning requires it ([REQ-020](#req-020)), and not otherwise merely because FORM has it. Rationale: decided by Thomas in the intake — the goal is an engine that is easier to understand, maintain and extend, which neither taking over FORM nor building on another core achieves. Note: this is the most expensive of the options considered. Evidence ([prior-art.md §4.1](prior-art.md#41-a-new-and-independent-engine-req-004)): FORM is actively maintained by a team of about three (releases 5.0.0 to 5.0.2 in 2026; arXiv:2601.19982), so the case for a new engine is not FORM's decline but its structural limits, which its own developers and manual record: a cap on the size of one term and buffer sizes tuned in a setup file, a text [preprocessor](glossary.md#preprocessor) used for program logic, an implicit loop over terms, `once` matches that may depend on declaration order or installation, `$`-variables that silently make a module sequential, no library interface, and documentation its developers call incomplete. The cost buys an improvement only if these are designed out rather than repeated. Libraries for exact arithmetic (such as [GMP](glossary.md#gmp) for integers, [FLINT](glossary.md#flint) for polynomials, [MPFR](glossary.md#mpfr) for floating point) are not another system's core and may be used, behind interfaces of the engine's own, provided their licences are compatible with GPL-3.0 and the representation, rewriting and [canonical form](glossary.md#canonical-form) remain the engine's own ([OPEN-O](#open-o), resolved; [REQ-096](#req-096)). Symbolica is not used as a source of any kind ([OPEN-P](#open-p)).
+<a id="req-003"></a>**REQ-003 — Learner (SHOULD).**
+A release after the first SHOULD let a learner follow a calculation step by step between checkpoints, with an explanation of each step in mathematical terms, so that they can compare the engine's steps with their own calculation by reading them.
+This SHALL be built on the checkpoint and step-trace capability of section 4, not as a separate engine.
 
-<a id="req-005"></a>**REQ-005 — Attribution (SHALL).** The engine SHALL credit FORM and its authors in its README and documentation, and SHALL name the FORM version its compatibility is measured against.
+<a id="req-004"></a>**REQ-004 — A new, independent engine (SHALL).**
+The engine SHALL be a new implementation, not a fork, translation or wrapper of FORM, and SHALL NOT be a layer over another computer-algebra system's core.
+Behaviour SHALL be reproduced from FORM where a FORM script's meaning requires it ([REQ-020](#req-020)), and not otherwise merely because FORM has it.
+Libraries for exact arithmetic (such as [GMP](glossary.md#gmp) for integers, [FLINT](glossary.md#flint) for polynomials, [MPFR](glossary.md#mpfr) for floating point) are not another system's core.
+They may be used, behind interfaces of the engine's own, provided their licences are compatible with GPL-3.0 and the representation, rewriting and [canonical form](glossary.md#canonical-form) remain the engine's own ([OPEN-O](#open-o); [REQ-096](#req-096)).
+Symbolica is not used as a source of any kind ([OPEN-P](#open-p)).
 
-<a id="req-006"></a>**REQ-006 — Out of scope (OUT OF SCOPE).** For the first release, which comprises stages 1 to 3 of [OPEN-K](#open-k): the capabilities of stages 4 to 6 (index and tensor objects, the FORM front end, physics modules), beyond the design obligations of [REQ-017](#req-017) and [REQ-025](#req-025); a graphical user interface; Feynman-diagram generation; loop-integral reduction ([integration by parts](glossary.md#ibp)); symbolic integration beyond polynomials; numerical integration; multi-node ([MPI](glossary.md#mpi)) execution; the learner explanations of [REQ-003](#req-003); the C++, Python and notebook interfaces of [REQ-061](#req-061) to [REQ-063](#req-063), beyond the design obligation of [REQ-064](#req-064); the FORM front end of [REQ-020](#req-020), beyond the design obligation of [REQ-025](#req-025); the interactive session of [REQ-060](#req-060), beyond its design obligation; the roots of [REQ-015](#req-015); the export as C or Fortran code of [REQ-057](#req-057). <!-- glossary-ignore: stage -->
+- **Rationale:** the goal is an engine that is easier to understand, maintain and extend, which neither taking over FORM nor building on another core achieves.
+  This is the most expensive of the options considered.
+- **Evidence:** FORM is actively maintained, so the case for a new engine is not FORM's decline but its structural limits, which its own developers and manual record.
+  Among them are a cap on the size of one term, a text [preprocessor](glossary.md#preprocessor) used for program logic, `$`-variables that silently make a module sequential, and no library interface ([prior-art.md §4.1](prior-art.md#41-a-new-and-independent-engine-req-004)).
+  The cost buys an improvement only if these are designed out rather than repeated.
+- **Decided:** Thomas, in the intake, 15 October 2026.
+
+<a id="req-005"></a>**REQ-005 — Attribution (SHALL).**
+The engine SHALL credit FORM and its authors in its README and documentation, and SHALL name the FORM version its compatibility is measured against.
+
+<a id="req-006"></a>**REQ-006 — Out of scope (OUT OF SCOPE).**
+For the first release, which comprises stages 1 to 3 of [OPEN-K](#open-k), the following are out of scope: <!-- glossary-ignore: stage -->
+
+- the capabilities of stages 4 to 6 (index and tensor objects, the FORM front end, physics modules), beyond the design obligations of [REQ-017](#req-017) and [REQ-025](#req-025); <!-- glossary-ignore: stage -->
+- a graphical user interface;
+- Feynman-diagram generation;
+- loop-integral reduction ([integration by parts](glossary.md#ibp));
+- symbolic integration beyond polynomials;
+- numerical integration;
+- multi-node ([MPI](glossary.md#mpi)) execution;
+- the learner explanations of [REQ-003](#req-003);
+- the C++, Python and notebook interfaces of [REQ-061](#req-061) to [REQ-063](#req-063), beyond the design obligation of [REQ-064](#req-064);
+- the FORM front end of [REQ-020](#req-020), beyond the design obligation of [REQ-025](#req-025);
+- the interactive session of [REQ-060](#req-060), beyond its design obligation;
+- the roots of [REQ-015](#req-015);
+- the export as C or Fortran code of [REQ-057](#req-057).
 
 ## 2. Mathematical capability
 
-<a id="req-010"></a>**REQ-010 — Core algebra first (SHALL).** The first release SHALL provide, for expressions in any number of symbols with exact rational coefficients of arbitrary size: expansion; collection by chosen symbols; substitution of one expression for another; differentiation; [polynomial greatest common divisor](glossary.md#polynomial-greatest-common-divisor); factorisation of polynomials in any number of symbols into factors irreducible over the rational numbers; and normalisation of rational functions. Factorisation is checked by multiplying the factors back ([OPEN-Q](#open-q), resolved). Rationale: decided by Thomas in the intake — basic mathematics first, physics domains as modules afterwards. These operations are also what every physics module is built from.
+<a id="req-010"></a>**REQ-010 — Core algebra first (SHALL).**
+The first release SHALL provide, for expressions in any number of symbols with exact rational coefficients of arbitrary size:
+expansion; collection by chosen symbols; substitution of one expression for another; differentiation; [polynomial greatest common divisor](glossary.md#polynomial-greatest-common-divisor); factorisation of polynomials in any number of symbols into factors irreducible over the rational numbers; and normalisation of rational functions.
+Factorisation is checked by multiplying the factors back ([OPEN-Q](#open-q)).
 
-<a id="req-011"></a>**REQ-011 — Pattern-based rewriting (SHALL).** The first release SHALL replace sub-expressions matching a pattern with [wildcards](glossary.md#wildcard) (for symbols, functions, arguments and indices) by a replacement, including repeatedly until no match remains, and SHALL support rules that apply only under a condition. Rationale: rewriting by pattern is the operation FORM calculations are written in ([REQ-020](#req-020)) and the one on which spinor-helicity, Dirac-algebra and tensor modules depend.
+- **Rationale:** basic mathematics first, physics domains as modules afterwards.
+  These operations are also what every physics module is built from.
+- **Decided:** Thomas, in the intake, 15 October 2026; factorisation 16 October 2026 ([OPEN-Q](#open-q)).
 
-<a id="req-012"></a>**REQ-012 — Canonical form (SHALL).** Two expressions the engine has brought to normal form SHALL be printed identically IF AND ONLY IF they are equal as polynomials (or rational functions) in their symbols, under the declared symmetries and commutation properties of their objects. Rationale: comparing results — with a reference, with the user's own calculation, between engine versions — depends on it ([REQ-020](#req-020), [REQ-071](#req-071)). Example: (x + y)² − x² and y·(2x + y) are equal, and after normalisation both print as 2xy + y², in the same order. The canonical form SHALL depend only on the names of objects and their declared properties, never on the order in which they were declared or created, so that two scripts declaring the same symbols in a different order give the same canonical form; the user MAY ask for a different display order, but comparisons are always made in the canonical form. Arguments of functions SHALL be normalised recursively, so that f(x + y) and f(y + x) are the same. Rationale for the order (agreed by Thomas, 16 October 2026): FORM orders terms by declaration order, so equal results of two FORM scripts can print differently. Identities between functions beyond rational ones are applied only where a module declares them, and only WHEN the user asks for that module's simplification: without it, x·sin(x)² + x·cos(x)² stays as written; with a trigonometry module's simplification it becomes x. Rationale for the second part (agreed by Thomas, 15 October 2026): whether to use such an identity is often the physicist's choice (one may want to keep cos² for a later step), and deciding equality for general functions is known to be undecidable, so an engine that applies identities on its own judgement cannot be predicted.
+<a id="req-011"></a>**REQ-011 — Pattern-based rewriting (SHALL).**
+The first release SHALL replace sub-expressions matching a pattern with [wildcards](glossary.md#wildcard) (for symbols, functions, arguments and indices) by a replacement, including repeatedly until no match remains, and SHALL support rules that apply only under a condition.
 
-<a id="req-014"></a>**REQ-014 — Linear algebra (SHALL).** The first release SHALL provide matrices with symbolic entries, with products, transposes, determinants, inverses, rank and null space, and the exact solution of systems of linear equations with symbolic coefficients, reporting when a system has no solution or a family of solutions and giving the family. Results with symbolic entries SHALL be generic — valid wherever the denominators that arise in the calculation are non-zero — and the engine SHALL report those conditions with the result. Example: the rank of [[a, 1], [1, a]] is reported as 2, valid for a² − 1 ≠ 0; at a = ±1 it is 1. Splitting a result into cases by parameter value is OUT OF SCOPE. Rationale (agreed by Thomas, 16 October 2026): a symbolic rank or solution family silently stated for all parameter values is wrong at exactly the special values that are often of physical interest.
+- **Rationale:** rewriting by pattern is the operation FORM calculations are written in ([REQ-020](#req-020)).
+  Spinor-helicity, Dirac-algebra and tensor modules depend on it.
 
-<a id="req-015"></a>**REQ-015 — Roots of polynomials (SHOULD).** A release after the first SHOULD give the exact roots of polynomial equations in one unknown where they exist in closed form by radicals (up to degree four), and otherwise SHALL say so rather than fail silently. Numerical roots COULD come in a later release ([OPEN-M](#open-m), resolved). Moved out of the first release by Thomas, 11 November 2026.
+<a id="req-012"></a>**REQ-012 — Canonical form (SHALL).**
+Two expressions the engine has brought to normal form SHALL be printed identically IF AND ONLY IF they are equal as polynomials (or rational functions) in their symbols, under the declared symmetries and commutation properties of their objects.
+The canonical form SHALL depend only on the names of objects and their declared properties, never on the order in which they were declared or created, so that two scripts declaring the same symbols in a different order give the same canonical form.
+The user MAY ask for a different display order, but comparisons are always made in the canonical form.
+Arguments of functions SHALL be normalised recursively, so that f(x + y) and f(y + x) are the same.
+Identities between functions beyond rational ones are applied only where a module declares them, and only WHEN the user asks for that module's simplification.
 
-<a id="req-016"></a>**REQ-016 — Differential equations (COULD).** A later release COULD solve stated classes of ordinary differential equations, starting with linear equations with constant coefficients, and COULD later solve stated classes of partial differential equations ([OPEN-L](#open-l)). The classes supported SHALL be listed in the documentation, and IF an equation is outside them THEN the engine SHALL say so. Rationale: solving differential equations in general is an open research problem rather than a feature; promising it without stating the classes is how computer-algebra systems come to return a wrong or empty answer without explanation ([OPEN-L](#open-l)).
+- **Example:** (x + y)² − x² and y·(2x + y) are equal; after normalisation both print as 2xy + y², in the same order.
+- **Example:** without a trigonometry module's simplification, x·sin(x)² + x·cos(x)² stays as written; with it, it becomes x.
+- **Rationale:** comparing results — with a reference, with the user's own calculation, between engine versions — depends on it ([REQ-020](#req-020), [REQ-071](#req-071)).
+- **Rationale for the order:** FORM orders terms by declaration order, so equal results of two FORM scripts can print differently.
+- **Rationale for identities:** whether to use such an identity is often the physicist's choice (one may want to keep cos² for a later step).
+  Deciding equality for general functions is known to be undecidable, so an engine that applies identities on its own judgement cannot be predicted.
+- **Decided:** Thomas; identities 15 October 2026, the order 16 October 2026.
 
-<a id="req-017"></a>**REQ-017 — Index and tensor objects (SHALL).** The second release (stage 4 of [OPEN-K](#open-k)) SHALL represent indices (with a declared dimension, which may be a symbol such as d), vectors, and functions and tensors with declared symmetry (symmetric, antisymmetric, cyclic) and commutation property (commuting or not), with automatic contraction of repeated indices where declared. The first release SHALL be designed so that this is added without restructuring the representation. Acceptance: as for [REQ-025](#req-025), the architecture names where these objects enter. Rationale: FORM scripts use these from their first lines ([REQ-020](#req-020)), and GR and amplitude modules ([REQ-033](#req-033)) cannot be added without them in the core; they are deferred from the first release by Thomas's decision of 15 October 2026 ([OPEN-K](#open-k)), but a representation designed without them would have to be rebuilt. <!-- glossary-ignore: stage -->
+<a id="req-014"></a>**REQ-014 — Linear algebra (SHALL).**
+The first release SHALL provide matrices with symbolic entries, with products, transposes, determinants, inverses, rank and null space, and the exact solution of systems of linear equations with symbolic coefficients, reporting when a system has no solution or a family of solutions and giving the family.
+Results with symbolic entries SHALL be generic — valid wherever the denominators that arise in the calculation are non-zero — and the engine SHALL report those conditions with the result.
+Splitting a result into cases by parameter value is OUT OF SCOPE.
 
-<a id="req-093"></a>**REQ-093 — Series expansion and truncation (SHALL).** The first release SHALL expand an expression as a Taylor or [Laurent series](glossary.md#laurent-series) in a chosen parameter to a chosen order, and SHALL let a calculation declare that powers of a parameter beyond a chosen order are dropped as soon as they arise. Rationale: physics calculations expand in a small coupling or in the dimensional-regularisation parameter ε constantly, and dropping high powers early is what keeps long calculations small; FORM provides it ([OPEN-N](#open-n)). Truncation arrives with stage 1 of [OPEN-K](#open-k) and series expansion with stage 2 (agreed by Thomas, 16 October 2026). <!-- glossary-ignore: stage -->
+- **Example:** the rank of [[a, 1], [1, a]] is reported as 2, valid for a² − 1 ≠ 0; at a = ±1 it is 1.
+- **Rationale:** a symbolic rank or solution family silently stated for all parameter values is wrong at exactly the special values that are often of physical interest.
+- **Decided:** Thomas, 16 October 2026.
 
-<a id="req-099"></a>**REQ-099 — Elementary functions (SHALL).** The first release SHALL provide the exponential, the natural logarithm, sine, cosine and rational powers of expressions (such as √x = x^(1/2)), with their derivatives ([REQ-010](#req-010)) and series expansions ([REQ-093](#req-093)), as a module using only the interface of [REQ-030](#req-030). Identities between them (such as sin² + cos² = 1, or exp(a)·exp(b) = exp(a + b)) are applied only WHEN the user asks for that module's simplification ([REQ-012](#req-012)), and those that hold only under a property of a symbol (√(x²) = x) only WHEN the property is declared ([REQ-094](#req-094)). The Γ function and other special functions COULD follow in a later release. Rationale (agreed by Thomas, 16 October 2026): differentiation, expansion in ε and assumptions all presuppose such functions, and without this requirement no release was obliged to have any.
+<a id="req-015"></a>**REQ-015 — Roots of polynomials (SHOULD).**
+A release after the first SHOULD give the exact roots of polynomial equations in one unknown where they exist in closed form by radicals (up to degree four), and otherwise SHALL say so rather than fail silently.
+Numerical roots COULD come in a later release ([OPEN-M](#open-m)).
 
-<a id="req-094"></a>**REQ-094 — Assumptions (SHOULD).** From the rational-function stage ([OPEN-K](#open-k)), the user SHOULD be able to declare properties of symbols — positive, real, integer, non-zero — and the engine SHALL make a simplification that depends on such a property (for example √(x²) = x, which requires x ≥ 0) only WHEN the property is declared. Rationale: an engine that assumes such properties silently gives results that are wrong outside the assumption ([OPEN-N](#open-n)). <!-- glossary-ignore: stage -->
+- **Decided:** moved out of the first release by Thomas, 11 November 2026.
 
-<a id="req-095"></a>**REQ-095 — Limits (COULD).** A later release COULD compute limits of expressions, IF it can do so by an algorithm that either returns the correct limit or says it cannot decide. Solving inequalities is OUT OF SCOPE ([OPEN-N](#open-n)).
+<a id="req-016"></a>**REQ-016 — Differential equations (COULD).**
+A later release COULD solve stated classes of ordinary differential equations, starting with linear equations with constant coefficients, and COULD later solve stated classes of partial differential equations ([OPEN-L](#open-l)).
+The classes supported SHALL be listed in the documentation, and IF an equation is outside them THEN the engine SHALL say so.
 
-<a id="req-018"></a>**REQ-018 — Exactness (SHALL).** The engine SHALL NOT introduce floating-point numbers into a calculation unless the user asks for numerical evaluation, and WHEN it evaluates numerically THEN it SHALL state the precision used.
+- **Rationale:** solving differential equations in general is an open research problem rather than a feature.
+  Promising it without stating the classes is how computer-algebra systems come to return a wrong or empty answer without explanation.
 
-<a id="req-101"></a>**REQ-101 — Numerical evaluation (SHOULD).** The first release SHOULD evaluate an expression to a decimal number to a precision the user chooses, after substituting values for its symbols — for example exp(1) to 30 digits as 2.71828182845904523536028747135 — with every digit it prints correct, using a library for arbitrary-precision arithmetic behind an interface of [REQ-096](#req-096). Acceptance: every printed digit is proven by an error bound carried through the whole evaluation ([ball arithmetic](glossary.md#ball-arithmetic), [ADR-0003](adr/0003-flint-gmp-arb-behind-own-interfaces.md)), and IF the digits cannot be proven at the precision limit THEN the engine says so rather than print them (Thomas, 16 October 2026). Rationale (agreed by Thomas, 16 October 2026, [OPEN-M](#open-m)): substituting random values is the quickest check that two long expressions agree, and a learner wants to see a number; the arithmetic is done by an existing library (FLINT's ball arithmetic, `arb`), so the cost is small. Exported code ([REQ-057](#req-057)) remains the way to evaluate a result many times.
+<a id="req-017"></a>**REQ-017 — Index and tensor objects (SHALL).**
+The second release (stage 4 of [OPEN-K](#open-k)) SHALL represent indices (with a declared dimension, which may be a symbol such as d), vectors, and functions and tensors with declared symmetry (symmetric, antisymmetric, cyclic) and commutation property (commuting or not), with automatic contraction of repeated indices where declared. <!-- glossary-ignore: stage -->
+The first release SHALL be designed so that this is added without restructuring the representation.
+
+- **Acceptance:** as for [REQ-025](#req-025), the architecture names where these objects enter.
+- **Rationale:** FORM scripts use these from their first lines ([REQ-020](#req-020)).
+  GR and amplitude modules ([REQ-033](#req-033)) cannot be added without them in the core.
+  A representation designed without them would have to be rebuilt.
+- **Decided:** deferred from the first release by Thomas, 15 October 2026 ([OPEN-K](#open-k)).
+
+<a id="req-093"></a>**REQ-093 — Series expansion and truncation (SHALL).**
+The first release SHALL expand an expression as a Taylor or [Laurent series](glossary.md#laurent-series) in a chosen parameter to a chosen order, and SHALL let a calculation declare that powers of a parameter beyond a chosen order are dropped as soon as they arise.
+Truncation arrives with stage 1 of [OPEN-K](#open-k) and series expansion with stage 2. <!-- glossary-ignore: stage -->
+
+- **Rationale:** physics calculations expand in a small coupling or in the dimensional-regularisation parameter ε constantly.
+  Dropping high powers early is what keeps long calculations small; FORM provides it ([OPEN-N](#open-n)).
+- **Decided:** Thomas, 15 October 2026 ([OPEN-N](#open-n)); the stages 16 October 2026. <!-- glossary-ignore: stage -->
+
+<a id="req-099"></a>**REQ-099 — Elementary functions (SHALL).**
+The first release SHALL provide the exponential, the natural logarithm, sine, cosine and rational powers of expressions (such as √x = x^(1/2)), with their derivatives ([REQ-010](#req-010)) and series expansions ([REQ-093](#req-093)), as a module using only the interface of [REQ-030](#req-030).
+Identities between them (such as sin² + cos² = 1, or exp(a)·exp(b) = exp(a + b)) are applied only WHEN the user asks for that module's simplification ([REQ-012](#req-012)).
+Those that hold only under a property of a symbol (√(x²) = x) are applied only WHEN the property is declared ([REQ-094](#req-094)).
+The Γ function and other special functions COULD follow in a later release.
+
+- **Rationale:** differentiation, expansion in ε and assumptions all presuppose such functions.
+  Without this requirement no release was obliged to have any.
+- **Decided:** Thomas, 16 October 2026.
+
+<a id="req-094"></a>**REQ-094 — Assumptions (SHOULD).**
+From the rational-function stage ([OPEN-K](#open-k)), the user SHOULD be able to declare properties of symbols — positive, real, integer, non-zero — and the engine SHALL make a simplification that depends on such a property (for example √(x²) = x, which requires x ≥ 0) only WHEN the property is declared. <!-- glossary-ignore: stage -->
+
+- **Rationale:** an engine that assumes such properties silently gives results that are wrong outside the assumption ([OPEN-N](#open-n)).
+
+<a id="req-095"></a>**REQ-095 — Limits (COULD).**
+A later release COULD compute limits of expressions, IF it can do so by an algorithm that either returns the correct limit or says it cannot decide.
+Solving inequalities is OUT OF SCOPE ([OPEN-N](#open-n)).
+
+<a id="req-018"></a>**REQ-018 — Exactness (SHALL).**
+The engine SHALL NOT introduce floating-point numbers into a calculation unless the user asks for numerical evaluation, and WHEN it evaluates numerically THEN it SHALL state the precision used.
+
+<a id="req-101"></a>**REQ-101 — Numerical evaluation (SHOULD).**
+The first release SHOULD evaluate an expression to a decimal number to a precision the user chooses, after substituting values for its symbols, with every digit it prints correct, using a library for arbitrary-precision arithmetic behind an interface of [REQ-096](#req-096).
+Exported code ([REQ-057](#req-057)) remains the way to evaluate a result many times.
+
+- **Example:** exp(1) to 30 digits is 2.71828182845904523536028747135.
+- **Acceptance:** every printed digit is proven by an error bound carried through the whole evaluation ([ball arithmetic](glossary.md#ball-arithmetic), [ADR-0003](adr/0003-flint-gmp-arb-behind-own-interfaces.md)).
+  IF the digits cannot be proven at the precision limit THEN the engine says so rather than print them.
+- **Rationale:** substituting random values is the quickest check that two long expressions agree, and a learner wants to see a number.
+  The arithmetic is done by an existing library (FLINT's ball arithmetic, `arb`), so the cost is small.
+- **Decided:** Thomas, 16 October 2026 ([OPEN-M](#open-m)).
 
 ## 3. Input languages
 
-<a id="req-013"></a>**REQ-013 — Native language close to paper (SHALL).** The native language SHALL let a physicist write a calculation close to how it is written on paper: ordinary operator precedence and powers; named functions; Greek and other Unicode names; upper and lower indices with summation over repeated ones where declared; definitions and rules stated as equations. Acceptance: each corpus calculation of [REQ-070](#req-070) has a native-language version that is reviewed side by side with its textbook source, and every place where the notation must differ from the textbook is listed with its reason in the documentation. The native language is a standalone language: scripts are text files run by the command-line tool ([REQ-060](#req-060)); the later Python library ([REQ-062](#req-062)) drives the same engine and does not replace it ([OPEN-C](#open-c), resolved). The native language SHALL have no text [preprocessor](glossary.md#preprocessor): loops, procedures, conditions and includes are constructs of the language (Thomas, 11 November 2026; see [REQ-004](#req-004)). Rationale: decided by Thomas in the intake — physicists should not have to learn more syntax than necessary.
+<a id="req-013"></a>**REQ-013 — Native language close to paper (SHALL).**
+The native language SHALL let a physicist write a calculation close to how it is written on paper: ordinary operator precedence and powers; named functions; Greek and other Unicode names; upper and lower indices with summation over repeated ones where declared; definitions and rules stated as equations.
+The native language is a standalone language: scripts are text files run by the command-line tool ([REQ-060](#req-060)).
+The later Python library ([REQ-062](#req-062)) drives the same engine and does not replace it ([OPEN-C](#open-c)).
+The native language SHALL have no text [preprocessor](glossary.md#preprocessor): loops, procedures, conditions and includes are constructs of the language (see [REQ-004](#req-004)).
 
-<a id="req-020"></a>**REQ-020 — FORM scripts (SHALL).** From the release that introduces the FORM front end, the engine SHALL run FORM scripts, the supported part of FORM growing with each release as the capabilities scripts rely on are added ([OPEN-K](#open-k)). WHEN a FORM script uses only supported features, THEN the engine SHALL produce a result equal in canonical form ([REQ-012](#req-012)) to FORM's result for the same script. IF a script uses an unsupported feature, THEN the engine SHALL stop with an error naming the statement and its line, and SHALL NOT skip, approximate or reinterpret it. Rationale: decided by Thomas in the intake — groups have years of FORM scripts, and having to rewrite them is the strongest argument against adopting a new engine. An error is required because a script that runs with part of it ignored produces a plausible-looking wrong result.
+- **Acceptance:** each corpus calculation of [REQ-070](#req-070) has a native-language version that is reviewed side by side with its textbook source.
+  Every place where the notation must differ from the textbook is listed with its reason in the documentation.
+- **Rationale:** physicists should not have to learn more syntax than necessary.
+- **Decided:** Thomas, in the intake, 15 October 2026; no preprocessor 11 November 2026.
 
-<a id="req-021"></a>**REQ-021 — Measured compatibility (SHALL).** The supported subset of FORM SHALL be stated as the list of statements, functions and preprocessor features supported, and compatibility SHALL be measured on [the FORM corpus](glossary.md#form-corpus) and published with each release from the one that introduces the FORM front end, as the fraction of its scripts that run and agree. **[OPEN-D](#open-d):** which FORM version, which scripts, and what fraction the first release must reach. Rationale: "compatible with FORM" is not testable until it names a version and a set of scripts.
+<a id="req-020"></a>**REQ-020 — FORM scripts (SHALL).**
+From the release that introduces the FORM front end, the engine SHALL run FORM scripts, the supported part of FORM growing with each release as the capabilities scripts rely on are added ([OPEN-K](#open-k)).
+WHEN a FORM script uses only supported features, THEN the engine SHALL produce a result equal in canonical form ([REQ-012](#req-012)) to FORM's result for the same script.
+IF a script uses an unsupported feature, THEN the engine SHALL stop with an error naming the statement and its line, and SHALL NOT skip, approximate or reinterpret it.
 
-<a id="req-022"></a>**REQ-022 — One representation for both front ends (SHALL).** Expressions produced from a FORM script and from the native language SHALL be the same kind of object, so that a calculation started in one can be continued in the other, and every module ([REQ-030](#req-030)) is available to both.
+- **Rationale:** groups have years of FORM scripts; having to rewrite them is the strongest argument against adopting a new engine.
+  An error is required because a script that runs with part of it ignored produces a plausible-looking wrong result.
+- **Decided:** Thomas, in the intake, 15 October 2026.
 
-<a id="req-025"></a>**REQ-025 — FORM-ready from the start (SHALL).** The first release SHALL be designed so that the FORM front end can be added as a parser and modules, without restructuring the representation, the execution of a calculation or the native language. Acceptance: the architecture maps each FORM concept — expressions and their declarations, `.sort` [stages](glossary.md#stage), `id` statements and wildcards, `$`-variables, the preprocessor, tables — to the part of the engine that will carry it, and names any that has none. Rationale: decided by Thomas, 15 October 2026 — FORM compatibility is not needed in the first release but is to be factored into the design from the beginning, since real FORM scripts use capabilities (Dirac algebra in particular) that arrive only with the later modules.
+<a id="req-021"></a>**REQ-021 — Measured compatibility (SHALL).**
+The supported subset of FORM SHALL be stated as the list of statements, functions and preprocessor features supported.
+Compatibility SHALL be measured on [the FORM corpus](glossary.md#form-corpus) and published with each release from the one that introduces the FORM front end, as the fraction of its scripts that run and agree.
 
-<a id="req-023"></a>**REQ-023 — FORM output format (SHOULD).** The engine SHOULD be able to print results in FORM's output format, so that tools that read FORM output keep working. The output SHALL follow FORM's syntax and notation, so that any program that parses FORM output parses it, but need not match FORM character for character: the order of terms and the line breaks may differ. Comparisons with FORM are made in canonical form ([REQ-012](#req-012)), not on printed text ([OPEN-H](#open-h), resolved).
+- **Target:** the FORM version, the scripts and the fraction are set by [OPEN-D](#open-d). <!-- glossary-ignore: target -->
+- **Rationale:** "compatible with FORM" is not testable until it names a version and a set of scripts.
 
-<a id="req-024"></a>**REQ-024 — Errors in the user's terms (SHALL).** WHEN an input is invalid or ambiguous, THEN the error SHALL name the line, the construct, and what was expected, in mathematical rather than implementation terms. Unknown or undeclared names SHALL be errors, not silently created objects, unless the user has declared that they want automatic declaration. Rationale: a misspelled symbol silently created as a new one gives a result that looks right and is not.
+<a id="req-022"></a>**REQ-022 — One representation for both front ends (SHALL).**
+Expressions produced from a FORM script and from the native language SHALL be the same kind of object, so that a calculation started in one can be continued in the other, and every module ([REQ-030](#req-030)) is available to both.
+
+<a id="req-025"></a>**REQ-025 — FORM-ready from the start (SHALL).**
+The first release SHALL be designed so that the FORM front end can be added as a parser and modules, without restructuring the representation, the execution of a calculation or the native language.
+
+- **Acceptance:** the architecture maps each FORM concept — expressions and their declarations, `.sort` [stages](glossary.md#stage), `id` statements and wildcards, `$`-variables, the preprocessor, tables — to the part of the engine that will carry it, and names any that has none.
+- **Rationale:** FORM compatibility is not needed in the first release but is to be factored into the design from the beginning.
+  Real FORM scripts use capabilities (Dirac algebra in particular) that arrive only with the later modules.
+- **Decided:** Thomas, 15 October 2026.
+
+<a id="req-023"></a>**REQ-023 — FORM output format (SHOULD).**
+The engine SHOULD be able to print results in FORM's output format, so that tools that read FORM output keep working.
+The output SHALL follow FORM's syntax and notation, so that any program that parses FORM output parses it, but need not match FORM character for character: the order of terms and the line breaks may differ.
+Comparisons with FORM are made in canonical form ([REQ-012](#req-012)), not on printed text ([OPEN-H](#open-h)).
+
+<a id="req-024"></a>**REQ-024 — Errors in the user's terms (SHALL).**
+WHEN an input is invalid or ambiguous, THEN the error SHALL name the line, the construct, and what was expected, in mathematical rather than implementation terms.
+Unknown or undeclared names SHALL be errors, not silently created objects, unless the user has declared that they want automatic declaration.
+
+- **Rationale:** a misspelled symbol silently created as a new one gives a result that looks right and is not.
 
 ## 4. Steps, checkpoints and comparison
 
-<a id="req-040"></a>**REQ-040 — Checkpoints and step trace (SHALL).** The user SHALL be able to mark checkpoints in a calculation, and the engine SHALL then record the expression at each checkpoint and the named steps (statements and rules applied, in order) between consecutive checkpoints. The trace SHALL be at the level of steps applied to the whole expression, not of individual terms. WHILE tracing is off, its cost SHALL be negligible (Measurement: under 2% on the corpus, [OPEN-F](#open-f)). Rationale: this serves the researcher (finding where a sign goes wrong in a long calculation) and is the base of the learner's explanations ([REQ-003](#req-003)); a trace of individual terms is infeasible for calculations with millions of terms. Example: a script setting E = (a + b)³ − (a − b)³ with checkpoints "start", "expanded" (after expanding) and "collected" (after collecting in b) shows, with tracing on, the three expressions (a + b)³ − (a − b)³, 6a²b + 2b³ and b·(6a² + 2b²), and between them the steps "expand (a + b)³", "expand −(a − b)³", "combine like terms" and "collect in b". In a large calculation a step is reported as a whole, for example "applied rule p·p = 0: 12 408 terms removed". Accepted by Thomas, 15 October 2026.
+<a id="req-040"></a>**REQ-040 — Checkpoints and step trace (SHALL).**
+The user SHALL be able to mark checkpoints in a calculation.
+The engine SHALL then record the expression at each checkpoint and the named steps (statements and rules applied, in order) between consecutive checkpoints.
+The trace SHALL be at the level of steps applied to the whole expression, not of individual terms.
+WHILE tracing is off, its cost SHALL be negligible.
 
-<a id="req-041"></a>**REQ-041 — Compare with my calculation (OUT OF SCOPE).** Withdrawn in the second pass. It proposed that the user supply their own expression at a checkpoint and receive the difference from the engine's. Thomas, 15 October 2026: the intake's use case is comparing a pen-and-paper calculation with the engine's steps by reading them, which [REQ-040](#req-040) provides; a comparison feature is not wanted.
+- **Measurement:** under 2% on the corpus ([OPEN-F](#open-f)).
+- **Example:** a script sets E = (a + b)³ − (a − b)³, with checkpoints "start", "expanded" (after expanding) and "collected" (after collecting in b).
+  With tracing on, it shows the three expressions (a + b)³ − (a − b)³, 6a²b + 2b³ and b·(6a² + 2b²).
+  Between them it shows the steps "expand (a + b)³", "expand −(a − b)³", "combine like terms" and "collect in b".
+  In a large calculation a step is reported as a whole, for example "applied rule p·p = 0: 12 408 terms removed".
+- **Rationale:** this serves the researcher (finding where a sign goes wrong in a long calculation) and is the base of the learner's explanations ([REQ-003](#req-003)).
+  A trace of individual terms is infeasible for calculations with millions of terms.
+- **Decided:** accepted by Thomas, 15 October 2026.
+
+<a id="req-041"></a>**REQ-041 — Compare with my calculation (OUT OF SCOPE).**
+Withdrawn in the second pass.
+It proposed that the user supply their own expression at a checkpoint and receive the difference from the engine's.
+
+- **Rationale:** the intake's use case is comparing a pen-and-paper calculation with the engine's steps by reading them, which [REQ-040](#req-040) provides.
+  A comparison feature is not wanted.
+- **Decided:** Thomas, 15 October 2026.
 
 ## 5. Modules and extensibility
 
-<a id="req-030"></a>**REQ-030 — Modules (SHALL).** The engine SHALL offer a public, documented extension interface through which a module can add kinds of object, functions, rules, conventions and output formats, without changes to the engine's source. Acceptance: the first release's linear-algebra capability ([REQ-014](#req-014)) is itself a module using only that interface. Rationale: decided by Thomas in the intake — groups attach their own modules; building the engine's own domains as modules is what keeps the interface sufficient.
+<a id="req-030"></a>**REQ-030 — Modules (SHALL).**
+The engine SHALL offer a public, documented extension interface through which a module can add kinds of object, functions, rules, conventions and output formats, without changes to the engine's source.
 
-<a id="req-031"></a>**REQ-031 — Module stability and identity (SHALL).** The extension interface SHALL be versioned, and every result SHALL record which modules and versions produced it ([REQ-075](#req-075)). A breaking change to the interface SHALL change its major version and be listed in the release notes.
+- **Acceptance:** the first release's linear-algebra capability ([REQ-014](#req-014)) is itself a module using only that interface.
+- **Rationale:** groups attach their own modules.
+  Building the engine's own domains as modules is what keeps the interface sufficient.
+- **Decided:** Thomas, in the intake, 15 October 2026.
 
-<a id="req-032"></a>**REQ-032 — Third-party modules (SHALL).** A module SHALL be developable, built and distributed outside the engine's repository, and loaded by name or path from a script, without rebuilding the engine. A module SHALL be either (a) a **script module**, written in the native language ([REQ-013](#req-013)) as declarations and rules, needing no compiler, or (b) a **compiled module**, which connects through a [C interface](glossary.md#c-interface) the engine defines and keeps stable within a major version of [REQ-031](#req-031). Rationale (agreed by Thomas, 16 October 2026): most modules are declarations and rules and should not need a compiler; neither C++ nor Rust has a binary interface that is stable between compilers, and a C interface is the established way to load compiled extensions (Python, Lua and PostgreSQL do so).
+<a id="req-031"></a>**REQ-031 — Module stability and identity (SHALL).**
+The extension interface SHALL be versioned, and every result SHALL record which modules and versions produced it ([REQ-075](#req-075)).
+A breaking change to the interface SHALL change its major version and be listed in the release notes.
 
-<a id="req-096"></a>**REQ-096 — Replaceable external libraries (SHALL).** Every external library the engine relies on for a capability (polynomial arithmetic, integer and floating-point arithmetic, tensor canonicalisation, compression) SHALL be used only through an interface the engine defines in its own terms, so that the library can be replaced without changes elsewhere in the engine. Acceptance: the architecture names each such interface; no code outside the interface's [adapter](glossary.md#adapter) for a library refers to that library; and expressions are held in the engine's own representation, converted at the interface. Rationale: proposed by Thomas, 15 October 2026 ([OPEN-O](#open-o)) — a better library may appear, the project may write its own, or a library's licence may change, as Symbolica's did ([OPEN-P](#open-p)). FORM 5 converts its terms to FLINT and back in the same way (arXiv:2601.19982).
+<a id="req-032"></a>**REQ-032 — Third-party modules (SHALL).**
+A module SHALL be developable, built and distributed outside the engine's repository, and loaded by name or path from a script, without rebuilding the engine.
+A module SHALL be either (a) a **script module**, written in the native language ([REQ-013](#req-013)) as declarations and rules, needing no compiler, or (b) a **compiled module**, which connects through a [C interface](glossary.md#c-interface) the engine defines and keeps stable within a major version of [REQ-031](#req-031).
 
-<a id="req-097"></a>**REQ-097 — Independent polynomial arithmetic for cross-checks (SHOULD).** Besides the library chosen for speed, the engine SHOULD have a simple implementation of its own of the polynomial operations behind the interface of [REQ-096](#req-096) (multiplication, division, greatest common divisor), selectable by the user, and the automated tests SHALL compare the two on the polynomial corpus entries. Rationale: it proves the interface is independent of the library, and gives the independent cross-check of [REQ-071](#req-071) for the operations every later result depends on (agreed by Thomas, 15 October 2026).
+- **Rationale:** most modules are declarations and rules and should not need a compiler.
+  Neither C++ nor Rust has a binary interface that is stable between compilers.
+  A C interface is the established way to load compiled extensions (Python, Lua and PostgreSQL do so).
+- **Decided:** Thomas, 16 October 2026.
 
-<a id="req-033"></a>**REQ-033 — Planned physics modules (COULD).** Later releases COULD provide, as modules: tensor calculus for general relativity (Christoffel symbols, curvature tensors from a metric, coordinate transformations); Dirac algebra (gamma matrices and traces in four and d dimensions); spinor-helicity algebra (angle and square brackets, Schouten and momentum-conservation identities); colour algebra for SU(N). The order is [OPEN-K](#open-k). Rationale: the intake's research and learning examples (Unruh temperature, [QCD](glossary.md#qcd) splitting functions at higher order, GR tensor components) need these.
+<a id="req-096"></a>**REQ-096 — Replaceable external libraries (SHALL).**
+Every external library the engine relies on for a capability (polynomial arithmetic, integer and floating-point arithmetic, tensor canonicalisation, compression) SHALL be used only through an interface the engine defines in its own terms, so that the library can be replaced without changes elsewhere in the engine.
 
-<a id="req-034"></a>**REQ-034 — Explicit conventions (SHALL).** Every convention on which a result's sign or normalisation depends (metric signature, sign of the Riemann tensor, Levi-Civita sign, γ₅ scheme, spinor phase) SHALL be declared by the module that introduces it, settable by the user, recorded with the result, and stated in the documentation. **[OPEN-I](#open-i):** whether a module may default a convention or the user must always declare it. Rationale: a convention left implicit is how two correct calculations come to disagree in sign.
+- **Acceptance:** the architecture names each such interface.
+  No code outside the interface's [adapter](glossary.md#adapter) for a library refers to that library.
+  Expressions are held in the engine's own representation, converted at the interface.
+- **Rationale:** a better library may appear, the project may write its own, or a library's licence may change, as Symbolica's did ([OPEN-P](#open-p)).
+  FORM 5 converts its terms to FLINT and back in the same way (arXiv:2601.19982).
+- **Decided:** proposed by Thomas, 15 October 2026 ([OPEN-O](#open-o)).
+
+<a id="req-097"></a>**REQ-097 — Independent polynomial arithmetic for cross-checks (SHOULD).**
+Besides the library chosen for speed, the engine SHOULD have a simple implementation of its own of the polynomial operations behind the interface of [REQ-096](#req-096) (multiplication, division, greatest common divisor), selectable by the user.
+The automated tests SHALL compare the two on the polynomial corpus entries.
+
+- **Rationale:** it proves the interface is independent of the library.
+  It also gives the independent cross-check of [REQ-071](#req-071) for the operations every later result depends on.
+- **Decided:** Thomas, 15 October 2026.
+
+<a id="req-033"></a>**REQ-033 — Planned physics modules (COULD).**
+Later releases COULD provide, as modules:
+
+- tensor calculus for general relativity (Christoffel symbols, curvature tensors from a metric, coordinate transformations);
+- Dirac algebra (gamma matrices and traces in four and d dimensions);
+- spinor-helicity algebra (angle and square brackets, Schouten and momentum-conservation identities);
+- colour algebra for SU(N).
+
+The order is [OPEN-K](#open-k).
+
+- **Rationale:** the intake's research and learning examples (Unruh temperature, [QCD](glossary.md#qcd) splitting functions at higher order, GR tensor components) need these.
+
+<a id="req-034"></a>**REQ-034 — Explicit conventions (SHALL).**
+Every convention on which a result's sign or normalisation depends (metric signature, sign of the Riemann tensor, Levi-Civita sign, γ₅ scheme, spinor phase) SHALL be declared by the module that introduces it, settable by the user, recorded with the result, and stated in the documentation.
+
+- **Defaults:** a module may default a convention ([OPEN-I](#open-i)).
+- **Rationale:** a convention left implicit is how two correct calculations come to disagree in sign.
 
 ## 6. Correctness and validation
 
-<a id="req-070"></a>**REQ-070 — Known-results corpus (SHALL).** Correctness SHALL be established on a corpus of calculations with independently known results, each entry stating its source, inputs, expected result, and what it does and does not establish. Proposed for the first release: polynomial identities, factorisations and greatest common divisors with known answers; linear systems with known solution families, including singular ones; FORM's own test suite (confirmed by the survey: about 560 default and 27 heavier tests in `check/`, GPL-3.0-or-later and so reusable with attribution, asserting on FORM's printed output); and the FORM corpus. Candidate entries for every stage, each with its source, expected result, what it establishes, licence and whether it has been checked against its primary source, are catalogued in [prior-art.md §5](prior-art.md#5-validation-corpus-catalogue). Proposed for the physics modules, each entry also becoming a tutorial ([REQ-091](#req-091)): the Schwarzschild metric is [Ricci-flat](glossary.md#ricci-flat) and its Kretschmann scalar is 48G²M²/(c⁴r⁶); the trace of four gamma matrices; the spin-averaged e⁺e⁻ → μ⁺μ⁻ squared amplitude; the Parke–Taylor maximally-helicity-violating amplitudes; the leading-order QCD splitting functions; the Unruh temperature by Bogoliubov coefficients (for which the survey found no citable source with an engine-checkable result). The survey adds FeynCalc's practice as a model: example calculations that cite a textbook equation and fail when the result disagrees (arXiv:2312.14089).
+<a id="req-070"></a>**REQ-070 — Known-results corpus (SHALL).**
+Correctness SHALL be established on a corpus of calculations with independently known results, each entry stating its source, inputs, expected result, and what it does and does not establish.
 
-<a id="req-071"></a>**REQ-071 — Independent cross-check (SHALL).** Each first-release corpus entry SHALL be checked against at least one source independent of the engine (a published result, FORM, or another computer-algebra system), and the engine's agreement SHALL be tested automatically on every change.
+- **Proposed for the first release:** polynomial identities, factorisations and greatest common divisors with known answers; linear systems with known solution families, including singular ones; FORM's own test suite (about 560 default and 27 heavier tests in `check/`, GPL-3.0-or-later and so reusable with attribution; [prior-art.md §4.5](prior-art.md#45-the-form-version-and-the-form-corpus-open-d-req-020-req-021-req-023)); and the FORM corpus.
+- **Proposed for the physics modules,** each entry also becoming a tutorial ([REQ-091](#req-091)): the Schwarzschild metric is [Ricci-flat](glossary.md#ricci-flat) and its Kretschmann scalar is 48G²M²/(c⁴r⁶); the trace of four gamma matrices; the spin-averaged e⁺e⁻ → μ⁺μ⁻ squared amplitude; the Parke–Taylor maximally-helicity-violating amplitudes; the leading-order QCD splitting functions; the Unruh temperature by Bogoliubov coefficients (for which the survey found no citable source with an engine-checkable result).
+- **Candidates:** entries for every stage, each with its source, expected result, what it establishes, licence and whether it has been checked against its primary source, are catalogued in [prior-art.md §5](prior-art.md#5-validation-corpus-catalogue). <!-- glossary-ignore: stage -->
+- **Model:** FeynCalc's examples, which cite a textbook equation and fail when the result disagrees ([prior-art.md §4.4](prior-art.md#44-the-validation-corpus-req-070-req-071)).
 
-<a id="req-072"></a>**REQ-072 — Test every requirement (SHALL).** Every SHALL requirement SHALL have an automated test naming its ID, or an entry in a manual-verification list stating why it cannot be automated.
+<a id="req-071"></a>**REQ-071 — Independent cross-check (SHALL).**
+Each first-release corpus entry SHALL be checked against at least one source independent of the engine (a published result, FORM, or another computer-algebra system), and the engine's agreement SHALL be tested automatically on every change.
+
+<a id="req-072"></a>**REQ-072 — Test every requirement (SHALL).**
+Every SHALL requirement SHALL have an automated test naming its ID, or an entry in a manual-verification list stating why it cannot be automated.
 
 ## 7. Reproducibility and provenance
 
-<a id="req-074"></a>**REQ-074 — Determinism (SHALL).** The same script with the same engine and module versions SHALL produce identical output, independent of the number of threads, the machine and the run. Rationale: without it a result cannot be compared with a previous run, and a parallel speed-up that reorders output looks like a change in the result. Acceptance (agreed by Thomas, 15 October 2026; evidence in [prior-art.md §4.2](prior-art.md#42-multithreading-req-052-req-074)): (a) the order of terms depends only on the script, never on hash values, memory addresses or the timing of threads — tested by running the same scripts with 1, 2 and 8 threads on all three systems of [REQ-050](#req-050) and requiring byte-identical output; (b) a value carried from term to term (as FORM's `$`-variables are) declares how partial results from several threads are combined (sum, maximum, minimum), or the step runs on one thread and the engine says so — tested with 1 and 8 threads; (c) a rule that replaces only one of several matches chooses it by a documented rule, not by declaration order or installation, as FORM's `once` may; (d) the result is identical whichever polynomial implementation of [REQ-096](#req-096) and [REQ-097](#req-097) is selected — tested on the polynomial corpus entries. Determinism applies to results; the provenance record of [REQ-075](#req-075), which may contain things that differ between runs (paths, times), is kept separately and excluded from the comparison (Thomas, 16 October 2026).
+<a id="req-074"></a>**REQ-074 — Determinism (SHALL).**
+The same script with the same engine and module versions SHALL produce identical output, independent of the number of threads, the machine and the run.
+Determinism applies to results.
+The provenance record of [REQ-075](#req-075), which may contain things that differ between runs (paths, times), is kept separately and excluded from the comparison.
 
-<a id="req-075"></a>**REQ-075 — Provenance (SHALL).** A result written to a file SHALL be accompanied by the engine version, the modules and their versions, the conventions in force ([REQ-034](#req-034)), the external libraries and their versions, which polynomial implementation was selected ([REQ-097](#req-097)), and a hash of the script and every file it includes. Provenance is the record of how a result was produced, so that its author or a reader can later tell exactly what produced it and run it again; it is kept apart from the result itself ([REQ-074](#req-074)).
+- **Acceptance (a):** the order of terms depends only on the script, never on hash values, memory addresses or the timing of threads.
+  Tested by running the same scripts with 1, 2 and 8 threads on all three systems of [REQ-050](#req-050) and requiring byte-identical output.
+- **Acceptance (b):** a value carried from term to term (as FORM's `$`-variables are) declares how partial results from several threads are combined (sum, maximum, minimum), or the step runs on one thread and the engine says so.
+  Tested with 1 and 8 threads.
+- **Acceptance (c):** a rule that replaces only one of several matches chooses it by a documented rule, not by declaration order or installation, as FORM's `once` may.
+- **Acceptance (d):** the result is identical whichever polynomial implementation of [REQ-096](#req-096) and [REQ-097](#req-097) is selected.
+  Tested on the polynomial corpus entries.
+- **Rationale:** without it a result cannot be compared with a previous run.
+  A parallel speed-up that reorders output looks like a change in the result.
+- **Evidence:** [prior-art.md §4.2](prior-art.md#42-multithreading-req-052-req-074).
+- **Decided:** Thomas; the acceptance rules 15 October 2026, provenance kept apart 16 October 2026.
+
+<a id="req-075"></a>**REQ-075 — Provenance (SHALL).**
+A result written to a file SHALL be accompanied by the engine version, the modules and their versions, the conventions in force ([REQ-034](#req-034)), the external libraries and their versions, which polynomial implementation was selected ([REQ-097](#req-097)), and a hash of the script and every file it includes.
+Provenance is the record of how a result was produced, so that its author or a reader can later tell exactly what produced it and run it again.
+It is kept apart from the result itself ([REQ-074](#req-074)).
 
 ## 8. Execution environments and scale
 
-<a id="req-050"></a>**REQ-050 — Laptop (SHALL).** The engine SHALL run natively on 64-bit Windows, macOS and Linux on a laptop, without administrator rights to install, and SHALL produce identical output on all three ([REQ-074](#req-074)). Rationale: decided by Thomas, 15 October 2026 ([OPEN-J](#open-j)); he works on Windows, and many physicists use macOS. Evidence ([prior-art.md §4.6](prior-art.md#46-implementation-language-and-platforms-open-e-req-050)): FORM 5 deprecated native Windows builds, citing no serious users and the cost of maintaining them from Linux (arXiv:2601.19982, §4.1), whereas Cadabra2 ships natively on Windows; native Windows is achievable and would distinguish the engine, at the cost FORM names. Because calculations are exact ([REQ-018](#req-018)), identical output across platforms is achievable, unlike for floating-point codes; numerical evaluation is excepted. 32-bit systems are not supported (Thomas, 15 October 2026); FORM 5 deprecated them too (arXiv:2601.19982, §4.2).
+<a id="req-050"></a>**REQ-050 — Laptop (SHALL).**
+The engine SHALL run natively on 64-bit Windows, macOS and Linux on a laptop, without administrator rights to install, and SHALL produce identical output on all three ([REQ-074](#req-074)).
+32-bit systems are not supported.
 
-<a id="req-051"></a>**REQ-051 — Cluster (SHALL).** The engine SHALL run unattended as a batch job on a university cluster or cloud machine, with no interactive input, writing its results and diagnostics to files, and returning a non-zero exit status on any failure. Several jobs running at the same time on one machine, sharing a directory for temporary files, SHALL NOT interfere with each other. Rationale: decided by Thomas in the intake; long calculations run where the computing power is. The second sentence was agreed by Thomas, 15 October 2026: before FORM 5, concurrent FORM jobs sharing a temporary directory crashed (arXiv:2601.19982, §2.3).
+- **Rationale:** Thomas works on Windows; many physicists use macOS.
+  Because calculations are exact ([REQ-018](#req-018)), identical output across platforms is achievable, unlike for floating-point codes; numerical evaluation is excepted.
+- **Evidence:** FORM 5 deprecated native Windows builds as costly to maintain from Linux, whereas Cadabra2 ships natively on Windows ([prior-art.md §4.6](prior-art.md#46-implementation-language-and-platforms-open-e-req-050)).
+  Native Windows is achievable and would distinguish the engine, at the cost FORM names.
+  FORM 5 deprecated 32-bit systems too.
+- **Decided:** Thomas, 15 October 2026 ([OPEN-J](#open-j)).
 
-<a id="req-052"></a>**REQ-052 — Multithreading (SHALL).** The first release SHALL use several cores of one machine for a single calculation, without changing its result ([REQ-074](#req-074)). Rationale: FORM already offers this ([TFORM](glossary.md#tform)); an engine without it is slower than its predecessor on the machines users have. Evidence ([prior-art.md §4.2](prior-art.md#42-multithreading-req-052-req-074)): FORM 5 deprecated its MPI version ParFORM because threads on one machine are now "far superior" (arXiv:2601.19982, §4.3), which supports leaving multi-node execution out ([REQ-006](#req-006)); TFORM's documented limits are a final merge on one thread, single expensive terms that cannot be split, and cross-term state that serialises a module (hep-ph/0702279). Its reported speed-up, about 1.7× on 2 cores and 3× on 4 (2007 hardware and workloads; no modern measurement was found), is the floor. Measurement (agreed by Thomas, 16 October 2026): on the kind-(A) benchmarks of [REQ-056](#req-056), on the reference machine, the engine's speed-up from 1 to 2 and to 4 threads SHALL be at least that of TFORM 5.0.2 on the same benchmarks, measured by the performance spike of [OPEN-F](#open-f); until then 1.7× and 3× are placeholders. Identical output with any number of threads ([REQ-074](#req-074)) requires a term order that does not depend on hash values or on the order in which symbols were created, as it does in GiNaC and Redberry.
+<a id="req-051"></a>**REQ-051 — Cluster (SHALL).**
+The engine SHALL run unattended as a batch job on a university cluster or cloud machine, with no interactive input, writing its results and diagnostics to files, and returning a non-zero exit status on any failure.
+Several jobs running at the same time on one machine, sharing a directory for temporary files, SHALL NOT interfere with each other.
 
-<a id="req-053"></a>**REQ-053 — First-release scale (SHALL).** The first release SHALL complete calculations whose largest intermediate expression has up to 10⁶ terms within 16 GB of memory (the reference machine's, and that of a typical work laptop; proposed by Claude, 16 October 2026). **[OPEN-F](#open-f):** the number. There is no separate time limit: speed is governed by [REQ-056](#req-056) (Thomas, 16 October 2026). Rationale: decided by Thomas in the intake — the first release need not reach the millions of terms of a higher-order QCD calculation, but should be past trivial.
+- **Rationale:** long calculations run where the computing power is.
+- **Evidence:** before FORM 5, concurrent FORM jobs sharing a temporary directory crashed ([prior-art.md §4.3](prior-art.md#43-larger-than-memory-expressions-req-053-req-054-req-055)).
+- **Decided:** Thomas, in the intake; the second sentence 15 October 2026.
 
-<a id="req-054"></a>**REQ-054 — Larger than memory, by design (SHALL).** The first release SHALL be designed so that holding expressions larger than memory (on disk, in the way FORM does) can be added without restructuring the representation or the front ends. Acceptance: the architecture names where that capability enters, and no first-release interface assumes an expression is in memory as a whole. Rationale: the research calculations the engine is for reach 10⁹ terms and more; this is FORM's defining strength, and adding it later to a design that assumes memory is a rewrite. Evidence ([prior-art.md §4.3](prior-art.md#43-larger-than-memory-expressions-req-053-req-054-req-055)): among the open-licensed systems surveyed, only FORM holds expressions larger than memory; GiNaC, SymEngine, SymPy, Cadabra2, Redberry, xAct and FeynCalc document no such capability. FORM achieves it with self-contained terms without pointers, statements that act on one term at a time, and an external merge sort on disk (arXiv:1203.6543); one of its modules has produced 2.56 × 10⁹ terms (arXiv:1006.4512). The capability arrives with the fourth release. From the first, a [store](glossary.md#store) on disk in the tests proves the interface ([roadmap](roadmap.md#phase-4-execution-model-threads-and-the-step-trace); Thomas, 11 November 2026).
+<a id="req-052"></a>**REQ-052 — Multithreading (SHALL).**
+The first release SHALL use several cores of one machine for a single calculation, without changing its result ([REQ-074](#req-074)).
 
-<a id="req-098"></a>**REQ-098 — No limits chosen in advance (SHALL).** The engine SHALL NOT stop a calculation because a term, a coefficient or an expression exceeds a size fixed in advance, other than the memory and disk space available, and SHALL NOT require the user to set buffer or cache sizes for a calculation to succeed; such settings may exist, for tuning only. Memory no longer needed SHALL be released during the run. IF a calculation runs out of memory or disk, THEN the engine SHALL say which, and at which statement. Rationale: agreed by Thomas, 15 October 2026. FORM caps one term at 40 000 words by default, so a term that grows during a calculation (for example through a large rational-function coefficient) stops a run, possibly hours into a cluster job, until the user raises the limit and related buffer sizes in a setup file by trial; its former developers name the term-length limits among FORM's main problems, and FORM 5 had to add a command to release unused memory ([prior-art.md §4.3](prior-art.md#43-larger-than-memory-expressions-req-053-req-054-req-055)). <!-- glossary-ignore: word -->
+- **Measurement:** on the kind-(A) benchmarks of [REQ-056](#req-056), on the reference machine, the engine's speed-up from 1 to 2 and to 4 threads SHALL be at least that of [TFORM](glossary.md#tform) 5.0.2 on the same benchmarks, measured by the performance spike of [OPEN-F](#open-f).
+  Until then 1.7× and 3× are placeholders.
+- **Rationale:** FORM already offers this (TFORM); an engine without it is slower than its predecessor on the machines users have.
+- **Evidence:** FORM 5 deprecated its MPI version in favour of threads on one machine, which supports leaving multi-node execution out ([REQ-006](#req-006)).
+  TFORM's documented limits and its reported speed-up, about 1.7× on 2 cores and 3× on 4 on 2007 hardware, are in [prior-art.md §4.2](prior-art.md#42-multithreading-req-052-req-074).
+- **Decided:** Thomas; the measurement 16 October 2026.
 
-<a id="req-055"></a>**REQ-055 — Checkpoint and resume (SHOULD).** A long calculation SHOULD be resumable from its last completed stage after an interruption (for example a cluster job reaching its time limit), giving the same result as an uninterrupted run. Evidence: FORM 5 deprecated its own checkpoint mechanism as "very likely to contain bugs" (arXiv:2601.19982, §4.4; [prior-art.md §4.3](prior-art.md#43-larger-than-memory-expressions-req-053-req-054-req-055)), so resuming is to be tested as rigorously as any result. Release (Thomas, 16 October 2026): this SHOULD holds from the release that adds expressions larger than memory ([REQ-054](#req-054)); the first release SHALL be designed so that the state of a calculation can be saved between stages, using the format of [REQ-100](#req-100).
+<a id="req-053"></a>**REQ-053 — First-release scale (SHALL).**
+The first release SHALL complete calculations whose largest intermediate expression has up to 10⁶ terms within 16 GB of memory (the reference machine's, and that of a typical work laptop).
+There is no separate time limit: speed is governed by [REQ-056](#req-056).
 
-<a id="req-056"></a>**REQ-056 — Performance against FORM (SHOULD).** On a set of benchmark calculations written both as FORM scripts and in the native language, the first release SHOULD be no more than a stated factor slower than FORM (the reference build of [OPEN-D](#open-d)) on the reference machine, single-threaded and multithreaded, and the measured factors SHALL be published with each release. The factor is stated separately for two kinds of calculation: (A) many terms being expanded, rewritten by rules and sorted, and (B) polynomial arithmetic — greatest common divisors and the simplification of rational functions. **[OPEN-F](#open-f):** the factors. From the release with the FORM front end, the FORM corpus is added to the benchmarks.
+- **Numbers:** to be confirmed by measurement ([OPEN-F](#open-f)).
+- **Rationale:** the first release need not reach the millions of terms of a higher-order QCD calculation, but should be past trivial.
+- **Decided:** Thomas, in the intake; 16 GB proposed by Claude and the time limit withdrawn by Thomas, 16 October 2026.
+
+<a id="req-054"></a>**REQ-054 — Larger than memory, by design (SHALL).**
+The first release SHALL be designed so that holding expressions larger than memory (on disk, in the way FORM does) can be added without restructuring the representation or the front ends.
+The capability arrives with the fourth release.
+
+- **Acceptance:** the architecture names where that capability enters, and no first-release interface assumes an expression is in memory as a whole.
+  From the first release, a [store](glossary.md#store) on disk in the tests proves the interface ([roadmap](roadmap.md#phase-4-execution-model-threads-and-the-step-trace)).
+- **Rationale:** the research calculations the engine is for reach 10⁹ terms and more.
+  This is FORM's defining strength; adding it later to a design that assumes memory is a rewrite.
+- **Evidence:** among the open-licensed systems surveyed, only FORM holds expressions larger than memory ([prior-art.md §4.3](prior-art.md#43-larger-than-memory-expressions-req-053-req-054-req-055)).
+- **Decided:** Thomas; the release and the test store 11 November 2026. <!-- glossary-ignore: store -->
+
+<a id="req-098"></a>**REQ-098 — No limits chosen in advance (SHALL).**
+The engine SHALL NOT stop a calculation because a term, a coefficient or an expression exceeds a size fixed in advance, other than the memory and disk space available.
+It SHALL NOT require the user to set buffer or cache sizes for a calculation to succeed; such settings may exist, for tuning only.
+Memory no longer needed SHALL be released during the run.
+IF a calculation runs out of memory or disk, THEN the engine SHALL say which, and at which statement.
+
+- **Rationale:** FORM caps one term at 40 000 words by default. <!-- glossary-ignore: word -->
+  A term that grows during a calculation (for example through a large rational-function coefficient) then stops a run, possibly hours into a cluster job, until the user raises the limit and related buffer sizes in a setup file by trial ([prior-art.md §4.3](prior-art.md#43-larger-than-memory-expressions-req-053-req-054-req-055)).
+- **Decided:** Thomas, 15 October 2026.
+
+<a id="req-055"></a>**REQ-055 — Checkpoint and resume (SHOULD).**
+A long calculation SHOULD be resumable from its last completed stage after an interruption (for example a cluster job reaching its time limit), giving the same result as an uninterrupted run.
+This SHOULD holds from the release that adds expressions larger than memory ([REQ-054](#req-054)).
+The first release SHALL be designed so that the state of a calculation can be saved between stages, using the format of [REQ-100](#req-100).
+
+- **Evidence:** FORM 5 deprecated its own checkpoint mechanism as "very likely to contain bugs" ([prior-art.md §4.3](prior-art.md#43-larger-than-memory-expressions-req-053-req-054-req-055)).
+  Resuming is therefore to be tested as rigorously as any result.
+- **Decided:** the release, Thomas, 16 October 2026.
+
+<a id="req-056"></a>**REQ-056 — Performance against FORM (SHOULD).**
+On a set of benchmark calculations written both as FORM scripts and in the native language, the first release SHOULD be no more than a stated factor slower than FORM (the reference build of [OPEN-D](#open-d)) on the reference machine, single-threaded and multithreaded.
+The measured factors SHALL be published with each release.
+The factor is stated separately for two kinds of calculation: (A) many terms being expanded, rewritten by rules and sorted, and (B) polynomial arithmetic — greatest common divisors and the simplification of rational functions.
+From the release with the FORM front end, the FORM corpus is added to the benchmarks.
+
+- **Factors:** set by [OPEN-F](#open-f).
 
 ## 9. Output and interoperability
 
-<a id="req-057"></a>**REQ-057 — Output formats (SHALL).** Results SHALL be printable as plain text and as LaTeX, and, from the release that introduces the FORM front end, SHOULD be exportable as C or Fortran code for numerical evaluation, with common subexpressions factored out (Thomas, 11 November 2026). Rationale: LaTeX is how physicists read and publish results; generated numerical code is how FORM results usually leave FORM. The plain-text output SHALL be readable back as native-language input ([REQ-013](#req-013)), giving the identical expression, so that a result archived with a paper or kept as a regression reference can be read, compared line by line and loaded again by later engine versions (agreed by Thomas, 16 October 2026).
+<a id="req-057"></a>**REQ-057 — Output formats (SHALL).**
+Results SHALL be printable as plain text and as LaTeX.
+From the release that introduces the FORM front end, they SHOULD be exportable as C or Fortran code for numerical evaluation, with common subexpressions factored out.
+The plain-text output SHALL be readable back as native-language input ([REQ-013](#req-013)), giving the identical expression.
 
-<a id="req-100"></a>**REQ-100 — Saving and loading expressions (SHALL).** The engine SHALL save expressions to a file and load them again in a later run, giving the identical expression, so that a result can be passed from one job to the next and a calculation can be resumed ([REQ-055](#req-055)). The format SHALL be binary, chosen for speed; it SHALL be versioned, SHALL be byte-identical on all three systems of [REQ-050](#req-050), and files written by one release SHALL be readable by later ones. Data the engine writes only for its own use during a run (such as parts of an expression held on disk, [REQ-054](#req-054)) need not be in this format. Rationale (agreed by Thomas, 16 October 2026): a binary format is fast where files are large and read only by the engine; the human-readable form needed for archiving and comparison is the plain-text output of [REQ-057](#req-057), so no second format has to be designed. FORM provides the same through its `save` and `load` statements.
+- **Rationale:** LaTeX is how physicists read and publish results; generated numerical code is how FORM results usually leave FORM.
+  Readable plain text means a result archived with a paper or kept as a regression reference can be read, compared line by line and loaded again by later engine versions.
+- **Decided:** Thomas; readable back 16 October 2026, the export's release 11 November 2026.
+
+<a id="req-100"></a>**REQ-100 — Saving and loading expressions (SHALL).**
+The engine SHALL save expressions to a file and load them again in a later run, giving the identical expression, so that a result can be passed from one job to the next and a calculation can be resumed ([REQ-055](#req-055)).
+The format SHALL be binary, chosen for speed; it SHALL be versioned, SHALL be byte-identical on all three systems of [REQ-050](#req-050), and files written by one release SHALL be readable by later ones.
+Data the engine writes only for its own use during a run (such as parts of an expression held on disk, [REQ-054](#req-054)) need not be in this format.
+
+- **Rationale:** a binary format is fast where files are large and read only by the engine.
+  The human-readable form needed for archiving and comparison is the plain-text output of [REQ-057](#req-057), so no second format has to be designed.
+  FORM provides the same through its `save` and `load` statements.
+- **Decided:** Thomas, 16 October 2026.
 
 ## 10. Interfaces
 
-<a id="req-060"></a>**REQ-060 — Command line and scripts (SHALL).** The first release SHALL run a script file from a command line and SHALL be designed so that a script's statements can also be run one at a time, with the same result. A later release SHOULD offer an interactive session in which statements are entered and results shown one at a time. Acceptance: a test runs scripts statement by statement through the interface of [REQ-064](#req-064) and compares the results. Rationale: decided by Thomas in the intake; the session moved to a later release on 11 November 2026.
+<a id="req-060"></a>**REQ-060 — Command line and scripts (SHALL).**
+The first release SHALL run a script file from a command line and SHALL be designed so that a script's statements can also be run one at a time, with the same result.
+A later release SHOULD offer an interactive session in which statements are entered and results shown one at a time.
 
-<a id="req-061"></a>**REQ-061 — C++ library (SHOULD).** A later release SHOULD offer the engine as a C++ library ([OPEN-E](#open-e) for its relation to the implementation language).
+- **Acceptance:** a test runs scripts statement by statement through the interface of [REQ-064](#req-064) and compares the results.
+- **Decided:** Thomas, in the intake; the session moved to a later release on 11 November 2026.
 
-<a id="req-062"></a>**REQ-062 — Python library (SHOULD).** A later release SHOULD offer the engine as a Python package installable with the standard Python tools, without a compiler.
+<a id="req-061"></a>**REQ-061 — C++ library (SHOULD).**
+A later release SHOULD offer the engine as a C++ library ([OPEN-E](#open-e) for its relation to the implementation language).
 
-<a id="req-063"></a>**REQ-063 — Notebooks (SHOULD).** A later release SHOULD work in Jupyter notebooks, displaying results as typeset mathematics. Rationale (for [REQ-061](#req-061) to [REQ-063](#req-063)): decided by Thomas in the intake — these are what make a research group adopt a tool.
+<a id="req-062"></a>**REQ-062 — Python library (SHOULD).**
+A later release SHOULD offer the engine as a Python package installable with the standard Python tools, without a compiler.
 
-<a id="req-064"></a>**REQ-064 — Library first, by design (SHALL).** The first release SHALL be built so that everything the command line does is available through a programming interface the command line itself uses, so that [REQ-061](#req-061) to [REQ-063](#req-063) add bindings rather than restructuring. Acceptance: the command-line tool contains no calculation logic.
+<a id="req-063"></a>**REQ-063 — Notebooks (SHOULD).**
+A later release SHOULD work in Jupyter notebooks, displaying results as typeset mathematics.
+
+- **Rationale** (for [REQ-061](#req-061) to [REQ-063](#req-063)): these are what make a research group adopt a tool.
+- **Decided:** Thomas, in the intake, 15 October 2026.
+
+<a id="req-064"></a>**REQ-064 — Library first, by design (SHALL).**
+The first release SHALL be built so that everything the command line does is available through a programming interface the command line itself uses, so that [REQ-061](#req-061) to [REQ-063](#req-063) add bindings rather than restructuring.
+
+- **Acceptance:** the command-line tool contains no calculation logic.
 
 ## 11. Documentation
 
-<a id="req-090"></a>**REQ-090 — Two audiences (SHALL).** Documentation SHALL be written for two audiences, kept separate: users (physicists, assumed to know the mathematics and not software development) and maintainers (assumed to know software development and not the codebase). Rationale: the poor documentation of FORM for both audiences is the first defect named in the intake, and the reason it is hard to adopt and hard to hand over.
+<a id="req-090"></a>**REQ-090 — Two audiences (SHALL).**
+Documentation SHALL be written for two audiences, kept separate: users (physicists, assumed to know the mathematics and not software development) and maintainers (assumed to know software development and not the codebase).
 
-<a id="req-091"></a>**REQ-091 — User documentation (SHALL).** User documentation SHALL include a getting-started tutorial, worked tutorials from the corpus ([REQ-070](#req-070)), a reference entry for every statement and function with at least one example, and a guide for FORM users mapping FORM constructs to native ones. Every example SHALL be run by the automated tests, and SHALL fail them if its output changes.
+- **Rationale:** the poor documentation of FORM for both audiences is the first defect named in the intake, and the reason it is hard to adopt and hard to hand over.
 
-**[OPEN-R](#open-r):** how an example is marked, run and checked.
+<a id="req-091"></a>**REQ-091 — User documentation (SHALL).**
+User documentation SHALL include a getting-started tutorial, worked tutorials from the corpus ([REQ-070](#req-070)), a reference entry for every statement and function with at least one example, and a guide for FORM users mapping FORM constructs to native ones.
+Every example SHALL be run by the automated tests, and SHALL fail them if its output changes.
 
-<a id="req-092"></a>**REQ-092 — Maintainer documentation (SHALL).** Maintainer documentation SHALL include these requirements, the architecture, the decision records, how to build and test, and how to write a module ([REQ-030](#req-030)), so that a developer new to the project can make and test a change without help from its author. Rationale: FORM's difficulty in finding a successor maintainer is, per the intake, a consequence of its maintainer documentation.
+- **Open:** how an example is marked, run and checked ([OPEN-R](#open-r)).
+
+<a id="req-092"></a>**REQ-092 — Maintainer documentation (SHALL).**
+Maintainer documentation SHALL include these requirements, the architecture, the decision records, how to build and test, and how to write a module ([REQ-030](#req-030)), so that a developer new to the project can make and test a change without help from its author.
+
+- **Rationale:** FORM's difficulty in finding a successor maintainer is, per the intake, a consequence of its maintainer documentation.
 
 ## 12. Licence and governance
 
-<a id="req-080"></a>**REQ-080 — Open source, single maintainer (SHALL).** The source SHALL be published under the [GNU General Public License](glossary.md#gpl) version 3.0 or, at the user's option, any later version (SPDX `GPL-3.0-or-later`, as FORM uses; Thomas, 16 October 2026), which lets anyone inspect, use, modify and redistribute it in their own fork, provided what they distribute stays under the same licence ([OPEN-E](#open-e)). For the first release the repository SHALL NOT accept outside contributions, and SHALL say so in its contributing guide, together with how to fork. Rationale: decided by Thomas in the intake; the project may later accept contributors, which is the reason for [REQ-092](#req-092).
+<a id="req-080"></a>**REQ-080 — Open source, single maintainer (SHALL).**
+The source SHALL be published under the [GNU General Public License](glossary.md#gpl) version 3.0 or, at the user's option, any later version (SPDX `GPL-3.0-or-later`, as FORM uses).
+This lets anyone inspect, use, modify and redistribute it in their own fork, provided what they distribute stays under the same licence ([OPEN-E](#open-e)).
+For the first release the repository SHALL NOT accept outside contributions, and SHALL say so in its contributing guide, together with how to fork.
+
+- **Rationale:** the project may later accept contributors, which is the reason for [REQ-092](#req-092).
+- **Decided:** Thomas, in the intake; "or later" 16 October 2026.
 
 <a id="open-decisions"></a>
 ## 13. Deferred capabilities and unresolved decisions
 
-An open decision is resolved immediately before the work that depends on it, not in advance: several are better settled with evidence from a spike or the prior-art survey than by argument, and one settled early on a guess is worse than one settled late on a measurement. Each decision below therefore carries a **Needed by** note saying what it blocks. A decision stays in this section once settled, marked **Resolved**, so that the reasoning survives the decision. <!-- glossary-ignore: block -->
+An open decision is resolved immediately before the work that depends on it, not in advance.
+Several are better settled with evidence from a spike or the prior-art survey than by argument.
+One settled early on a guess is worse than one settled late on a measurement.
+Each open decision therefore carries a **Needed by** note saying what it blocks. <!-- glossary-ignore: block -->
 
-<a id="open-a"></a>**OPEN-A — Name.** The project needs a name that is short, pronounceable, not taken by an existing mathematics or physics package, and available as a package name on PyPI and as a repository name. Candidates to check: TermForge (same family as PartonForge), Lemma, Tessera, Algebrix, Rewrite. Thomas proposed **Emmy**, after Emmy Noether (15 October 2026). Checked the same day: it is taken in this domain — Emmy (github.com/mentat-collective/emmy) is a GPL-3.0 computer-algebra system in Clojure for symbolic mathematics, classical mechanics and differential geometry; `emmy` is also taken on PyPI by an unrelated small package; and "Emmy" is the HLRN supercomputer in Göttingen, which is also named after Noether. A variant would still be confused with the first. Thomas then proposed two further candidates (15 October 2026): **Tante**, a deliberately non-technical name cross-referring to his project and identity Tante Thomas, and **AFCAS**, "Another Fucking Computer Algebra System", an irreverent acknowledgement that many such systems exist. Checked the same day: both are free on PyPI, and neither is the name of a known computer-algebra system. For Tante, the GitHub account `tante` is taken (apparently by the German technology writer Jürgen Geuter, who is widely known by that handle), so the repository needs another owner name or a qualified one. For AFCAS, a small authorisation library already uses the name on GitHub, and the expansion would appear in the README, in talks and in citations. **Resolved** (Thomas, 15 October 2026): **Tante**. The repository is hosted under Thomas's own account. The PyPI name `tante` is to be reserved by a placeholder release before the name is announced. The repository was created on 16 October 2026 as github.com/thomaswening/Tante, private until the PyPI name is reserved; it has to become public for the reference machine of [OPEN-G](#open-g). **Needed by:** creating the repository. **Reserved** (11 November 2026): Thomas uploaded a placeholder release, `tante` 0.0.0, to PyPI (https://pypi.org/project/tante/). It holds an empty import package and a README saying that Tante is in design. The name may now be announced.
+A settled decision stays in this section, marked **Resolved** or **Recorded**.
+It states the question, what holds now, who decided it and when, and why.
+How it got there is in the [revision history](#revision-history) and in git; the evidence is in [prior-art.md](prior-art.md).
 
-<a id="open-b"></a>**OPEN-B — Prior-art survey.** A survey (planned with the deep-research skill) of FORM (including its current maintenance status and its test suite), Symbolica, GiNaC, Cadabra2, Redberry, SymEngine/SymPy, xAct and FeynCalc: their representations, how each handles expressions larger than memory, parallelism, pattern matching, documentation, licences, and the published known results usable in the corpus. It is to confirm or revise the rationales of [REQ-004](#req-004), [REQ-052](#req-052), [REQ-054](#req-054) and [REQ-070](#req-070). **Resolved** (15 October 2026): the survey is [prior-art.md](prior-art.md). It confirms the four rationales, revising that of [REQ-004](#req-004) (FORM is maintained; the case is its structure), and raised [OPEN-O](#open-o) and [OPEN-P](#open-p). Its open gaps, chiefly corpus values still to be checked against primary sources, are listed in [prior-art.md §6](prior-art.md#6-open-gaps). **Needed by:** the second elicitation pass.
+<a id="open-a"></a>**OPEN-A — Name.**
+What is the project called?
+The name has to be short, pronounceable, not taken by a mathematics or physics package, and free on PyPI and as a repository name.
 
-<a id="open-c"></a>**OPEN-C — Form of the native language.** [REQ-013](#req-013). (a) A standalone language with its own parser: closest to paper notation and to FORM's script model, but a language to design, document and maintain. (b) A library embedded in Python, as SymPy is: no new syntax to learn and a full programming language for free, but Python's syntax limits how close to paper it gets, and it ties the first release to Python although [REQ-062](#req-062) is later. (c) Both, over one representation ([REQ-022](#req-022)). **Resolved** (Thomas, 15 October 2026, as proposed): (a) first, because it is closer to paper notation and to FORM's script model, and fits the command line and batch runs on clusters; the Python library of [REQ-062](#req-062) follows later and drives the same engine. **Needed by:** design.
+- **Resolved** (Thomas, 15 October 2026): **Tante**, a deliberately non-technical name cross-referring to Thomas's project and identity Tante Thomas.
+- **Rationale:** it is free on PyPI and is not the name of a known computer-algebra system.
+- **Rejected:** Emmy (after Emmy Noether), because a GPL-3.0 computer-algebra system in Clojure already has the name.
+  AFCAS, because a small library uses it on GitHub and its expansion would appear in citations.
+- **Repository:** the GitHub account `tante` is taken, so the repository is github.com/thomaswening/Tante, under Thomas's own account, created on 16 October 2026.
+  It has to become public for the reference machine of [OPEN-G](#open-g).
+- **Recorded** (11 November 2026): Thomas reserved the PyPI name with a placeholder release, `tante` 0.0.0 ([pypi.org/project/tante](https://pypi.org/project/tante/)).
+  The name may now be announced.
 
-<a id="open-d"></a>**OPEN-D — FORM version, corpus and target.** [REQ-020](#req-020), [REQ-021](#req-021). Which FORM version defines the meaning of a script; which public scripts form the FORM corpus (candidates: FORM's own tests, the published FORM programs of multi-loop packages, examples from FORM's tutorials); and what fraction of it the first release must run. **Partly resolved** (Thomas, 15 October 2026): the version is FORM's current release when the compatibility specification is written, recorded there by version number. Evidence (survey, 15 October 2026): that is now FORM 5.0.2 (18 September 2026). FORM 5 uses the FLINT library for polynomial arithmetic by default, and the overall sign of `gcd_` may differ from FORM 4 (arXiv:2601.19982), so the version alone does not fix the reference: its build configuration matters ([prior-art.md §4.5](prior-art.md#45-the-form-version-and-the-form-corpus-open-d-req-020-req-021-req-023)). FORM's `check/` suite (128 manual examples, 250 regression tests, 117 feature tests and others; heavier Mincer, Forcer, colour and [MZV](glossary.md#mzv) tests in `check/extra`) is GPL-3.0-or-later and the natural core of the FORM corpus. **Further resolved** (Thomas, 15 October 2026, as proposed): the reference is FORM 5.0.2 built with FLINT, and the compatibility specification records its build configuration as `form -vv` reports it; the first FORM corpus is `check/examples.frm` (the 128 examples of FORM's manual) and `check/fixes.frm` (250 regression tests from past bug reports), copied with attribution and used from the FORM front end on, with results compared in canonical form ([REQ-012](#req-012)) rather than as printed text. Still open: the fraction — how many of the corpus scripts the release introducing the FORM front end must run with the same result as FORM (for example 300 of the 378, about 80%); since many of them need Dirac algebra or other modules of stage 6, 100% is not reachable at stage 5. FORM's preprocessor, `$`-variables, tables and `.sort` stages are all to be supported eventually (Thomas, 16 October 2026); which arrive in which release is for the roadmap. **Resolved** (Thomas, 16 October 2026, as proposed): the fraction is set in the roadmap for the release that introduces the FORM front end, once its features are known. **Recorded** (Thomas, 11 November 2026, [roadmap phase 14](roadmap.md#phase-14-preprocessor-tables-and-the-form-corpus), with the counting rule and evidence): at least 80% of the FORM corpus (303 of 378 scripts) agrees with FORM; every other script stops with the error of [REQ-020](#req-020). FORM's preprocessor and tables arrive in the same release. **Needed by:** [Phase 13](roadmap.md#phase-13-the-form-front-end), which starts with the compatibility specification. <!-- glossary-ignore: target -->
+<a id="open-b"></a>**OPEN-B — Prior-art survey.**
+What do FORM (including its maintenance status and test suite), GiNaC, Cadabra2, Redberry, SymEngine/SymPy, xAct and FeynCalc show about representation, expressions larger than memory, parallelism, pattern matching, documentation, licences and published results usable in the corpus?
 
-<a id="open-e"></a>**OPEN-E — Implementation language and licence.** Thomas's intake names C++20 as a candidate for maintainability and parallelism; Rust is the main alternative. Evidence ([prior-art.md §4.6](prior-art.md#46-implementation-language-and-platforms-open-e-req-050)): the open-licensed engines that reach the largest scales are in C or C++ (FORM, GiNaC, SymEngine, Cadabra2), and FLINT, now FORM's polynomial back end, is a C library; the survey found no evidence that settles the language, and the risks it documents are a single maintainer (Package-X and HEPMath were abandoned) and an aging toolchain and hosting (Redberry), not the language. Symbolica's choice of language is not used as an argument ([OPEN-P](#open-p)). Maintainer (Thomas, 16 October 2026): Thomas is a .NET developer; he knows some C++20 and no Rust, and is fluent in neither, which weighs heavily for a single-maintainer project ([REQ-080](#req-080), [REQ-092](#req-092)) and makes C# on .NET a candidate alongside the two. **Resolved** (Thomas, 16 October 2026): **C++20**, to be recorded by [ADR](glossary.md#adr). Rust is rejected because Thomas does not know it and would be learning a hard language while maintaining the engine alone; C# because it is generally slower than C++ for this kind of work and is not what researchers use or know, which matters for adoption and for a future maintainer ([REQ-092](#req-092)). Thomas wants to learn C++, and the project is the occasion. The ADR is to address the risks this leaves: native Windows builds of GMP and FLINT ([REQ-050](#req-050)), and the guardrails (compiler warnings, [sanitizers](glossary.md#sanitizer), [static analysis](glossary.md#static-analysis)) that make C++ safe for a maintainer still learning it. A C++ library interface ([REQ-061](#req-061)) is cheapest from a C++ implementation. Licence: GPL-3.0 (as FORM: forks stay open) or a permissive licence such as Apache-2.0 (easier for other projects to embed). Note: being independent of FORM's source ([REQ-004](#req-004)) is what leaves the licence free to choose. **Licence resolved** (Thomas, 15 October 2026): GPL-3.0 ([REQ-080](#req-080)). Apache-2.0's advantages — closed-source products may embed the engine, and an explicit patent grant — serve no goal of this project, whereas GPL-3.0 keeps forks open, and is the licence of FORM, GiNaC and Cadabra. Still open: the language. **Needed by:** design (language, by ADR). **Recorded** (accepted by Thomas, 16 October 2026; [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md)): C++20, built with CMake and [vcpkg](glossary.md#vcpkg) on all three systems from the first commit, [MSVC](glossary.md#msvc) on Windows subject to a build spike, with warnings as errors, sanitizers and static analysis in CI, and a C interface for compiled modules ([REQ-032](#req-032)).
+- **Resolved** (15 October 2026): the survey is [prior-art.md](prior-art.md).
+- **Outcome:** it confirms the rationales of [REQ-004](#req-004), [REQ-052](#req-052), [REQ-054](#req-054) and [REQ-070](#req-070).
+  It revises that of [REQ-004](#req-004): FORM is maintained, so the case for a new engine is its structure.
+  It raised [OPEN-O](#open-o) and [OPEN-P](#open-p).
+  Its open gaps, chiefly corpus values still to be checked against primary sources, are listed in [prior-art.md §6](prior-art.md#6-open-gaps).
 
-<a id="open-f"></a>**OPEN-F — Numbers for scale and performance.** [REQ-040](#req-040), [REQ-053](#req-053), [REQ-056](#req-056). The proposed 10⁶ terms, the time limit (withdrawn in the twelfth pass), the overhead of tracing (proposed 2%) and the factor against FORM (proposed: at most 3 for the first release). These are guesses until a spike measures FORM on the corpus. Accepted by Thomas as working targets, 15 October 2026. Evidence ([prior-art.md §4.7](prior-art.md#47-performance-targets-open-f-req-056)): FORM 5 with FLINT is 16 to 53 times faster than without it on multivariate rational-function work (arXiv:2601.19982, Table 1), while its loop over terms is little changed; a factor "against FORM" is therefore ambiguous until it names the build and the kind of workload. The tracing overhead has no comparator except FORM's optional backtrace, about 1%. **Partly resolved** (Thomas, 15 October 2026, as proposed): the factor against FORM is split by kind of calculation ([REQ-056](#req-056)): at most 3 for calculations of kind (A), many terms rewritten and sorted; a separate factor for kind (B), polynomial arithmetic, set after a spike measures FORM 5.0.2 with FLINT, using polybench (Takahiro Ueda's MIT-licensed benchmark of polynomial greatest common divisors and factorisation across FORM, FLINT and other systems; github.com/tueda/polybench) without its Symbolica column ([OPEN-P](#open-p)). Still open: the factor for (B) and the confirmation of the other numbers by measurement. The spike also measures TFORM 5.0.2's speed-up on 2 and 4 threads, which becomes the target of [REQ-052](#req-052) (Thomas, 16 October 2026). **Needed by:** [Phase 9](roadmap.md#phase-9-performance-baseline), the first performance acceptance test. <!-- glossary-ignore: target -->
+<a id="open-c"></a>**OPEN-C — Form of the native language.** [REQ-013](#req-013).
+Is the native language (a) a standalone language with its own parser, (b) a library embedded in Python, as SymPy is, or (c) both, over one representation ([REQ-022](#req-022))?
 
-<a id="open-g"></a>**OPEN-G — Reference machine.** Proposed: PartonForge's. **Resolved** (Thomas, 16 October 2026): a GitHub-hosted standard Linux runner, rather than a personal machine whose background load and configuration change over time. Method (proposed by Claude, 16 October 2026, to be fixed in the performance spike): Tante and FORM 5.0.2 run in the same job, interleaved, each benchmark repeated and the median taken; the runner's CPU model is recorded with every result; requirements are stated as ratios within one job ([REQ-052](#req-052), [REQ-056](#req-056)), because hosted runners share hardware with other jobs and their CPU model varies between runs. Caveats: the 4 virtual CPUs may be hyperthreads of 2 physical cores, which limits what a 4-thread measurement shows; and 14 GB of disk will not hold the larger-than-memory calculations of [REQ-054](#req-054), which will need a larger (paid or self-hosted) runner when that capability arrives. The repository has to be on GitHub and public for the 4-CPU runner. **Needed by:** [Phase 9](roadmap.md#phase-9-performance-baseline), the first performance acceptance test.
+- **Resolved** (Thomas, 15 October 2026): (a) first; the Python library of [REQ-062](#req-062) follows later and drives the same engine.
+- **Rationale:** a standalone language is closer to paper notation and to FORM's script model, and fits the command line and batch runs on clusters.
 
-<a id="open-h"></a>**OPEN-H — FORM output compatibility.** [REQ-023](#req-023). Whether output must match FORM's character for character (line breaking, term order), or only its syntax. Character equality lets existing parsing tools work unchanged but ties output to FORM's term order. **Resolved** (Thomas, 15 October 2026, as proposed): syntax only ([REQ-023](#req-023)). Matching FORM's characters would mean reproducing its term order, which follows from its internal representation, against [REQ-004](#req-004); parsers do not depend on term order ([prior-art.md §4.5](prior-art.md#45-the-form-version-and-the-form-corpus-open-d-req-020-req-021-req-023)). **Needed by:** the FORM front end.
+<a id="open-d"></a>**OPEN-D — FORM version, corpus and target.** [REQ-020](#req-020), [REQ-021](#req-021). <!-- glossary-ignore: target -->
+Which FORM build defines the meaning of a script, which public scripts form the FORM corpus, and what fraction of it must agree with FORM?
 
-<a id="open-i"></a>**OPEN-I — Defaults for conventions.** [REQ-034](#req-034). Mandatory declaration is safest; defaults are friendlier to learners. Proposed: a module may default a convention, but the result always records it and the documentation of each module states its defaults on its first page. **Resolved** (Thomas, 16 October 2026, as proposed). **Needed by:** the first physics module.
+- **Resolved** (Thomas, 15 October 2026): the reference is FORM 5.0.2 built with FLINT, FORM's current release at the time.
+  The compatibility specification records its build configuration as `form -vv` reports it.
+- **Rationale:** FORM 5's FLINT build changes results such as the sign of `gcd_` ([prior-art.md §4.5](prior-art.md#45-the-form-version-and-the-form-corpus-open-d-req-020-req-021-req-023)).
+- **First corpus:** `check/examples.frm` (the 128 examples of FORM's manual) and `check/fixes.frm` (250 regression tests from past bug reports), copied with attribution and used from the FORM front end on.
+  Results are compared in canonical form ([REQ-012](#req-012)), not as printed text.
+- **Features:** FORM's preprocessor, `$`-variables, tables and `.sort` stages are all to be supported eventually (Thomas, 16 October 2026).
+- **Recorded** (Thomas, 11 November 2026, [roadmap phase 14](roadmap.md#phase-14-preprocessor-tables-and-the-form-corpus), with the counting rule and evidence): at least 80% of the FORM corpus (303 of 378 scripts) agrees with FORM.
+  Every other script stops with the error of [REQ-020](#req-020).
+  FORM's preprocessor and tables arrive in the same release.
+  The compatibility specification is written at the start of [Phase 13](roadmap.md#phase-13-the-form-front-end).
 
-<a id="open-j"></a>**OPEN-J — Platforms.** [REQ-050](#req-050). Linux is required by [REQ-051](#req-051). Proposed: Linux and macOS SHALL, Windows SHOULD (through the Windows Subsystem for Linux at least), with Linux on x86-64 as the platform reproducibility is stated against. **Resolved** (Thomas, 15 October 2026): all three SHALL, natively ([REQ-050](#req-050)). No technical reason prevents it; the costs are building and testing on three systems for every change, and the file and memory handling of [REQ-054](#req-054), which differs between systems. **Needed by:** design.
+<a id="open-e"></a>**OPEN-E — Implementation language and licence.**
+Which language is the engine written in (C++20, Rust, or C# on .NET), and which licence is it published under?
 
-<a id="open-k"></a>**OPEN-K — Order of the physics modules.** [REQ-033](#req-033). Proposed: Dirac algebra first, because FORM scripts use its built-in gamma matrices and traces and [REQ-021](#req-021)'s compatibility needs them; then GR tensors; then spinor-helicity and colour. This conflicts with the intake's "basic mathematics first" only if Dirac algebra is moved into the first release. Thomas, 15 October 2026: the engine is to be built up from simpler mathematics before the advanced modules; the order is to be discussed. **Resolved** (Thomas, 15 October 2026): the order is (1) numbers and polynomials — exact rationals, expansion, collection, substitution, canonical form; (2) rational functions and differentiation; (3) linear algebra and equations; (4) generic indices and tensors with symmetries and contraction, without physics content; (5) the FORM front end on (1)–(4); (6) physics modules — Dirac algebra, GR tensors, spinor-helicity, colour algebra. Real FORM scripts therefore run only from (6), and FORM compatibility grows release by release ([REQ-020](#req-020), [REQ-025](#req-025)). Still open: which stages make up the first release. **Resolved** (Thomas, 15 October 2026, as proposed): the first release is stages 1 to 3, the minimum viable product; stage 4 is designed in from the start ([REQ-017](#req-017)) and delivered in the second release. **Revised** (Thomas, 11 November 2026): the first release is an engine preview, since FORM users' scripts need indices and Dirac algebra from their first lines. The minimum viable product is the third release, which runs existing FORM scripts ([roadmap](roadmap.md#releases-and-who-they-are-for)). **Needed by:** the roadmap.
+- **Resolved** (Thomas, 15 October 2026, the licence; 16 October 2026, the language): GPL-3.0 ([REQ-080](#req-080)) and C++20.
+- **Rationale for C++20:** Thomas knows some C++20 and no Rust, which weighs heavily for a single maintainer ([REQ-092](#req-092)).
+  Thomas also wants to learn C++.
+  C++ has the shortest path to FLINT, a C library, and to the C++ library of [REQ-061](#req-061) ([prior-art.md §4.6](prior-art.md#46-implementation-language-and-platforms-open-e-req-050)).
+  C# was rejected because it is generally slower for this kind of work and is not what researchers use or know.
+- **Rationale for GPL-3.0:** it keeps forks open, as for FORM, GiNaC and Cadabra.
+  The advantages of a permissive licence such as Apache-2.0 (closed-source embedding, an explicit patent grant) serve no goal of this project.
+  Independence from FORM's source ([REQ-004](#req-004)) is what leaves the licence free to choose.
+- **Recorded** (accepted by Thomas, 16 October 2026, as an [ADR](glossary.md#adr): [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md)): C++20, built with CMake and [vcpkg](glossary.md#vcpkg) on all three systems from the first commit.
+  [MSVC](glossary.md#msvc) on Windows, subject to a build spike.
+  Warnings as errors, [sanitizers](glossary.md#sanitizer) and [static analysis](glossary.md#static-analysis) in CI.
+  A C interface for compiled modules ([REQ-032](#req-032)).
 
-<a id="open-l"></a>**OPEN-L — Scope of differential equations.** [REQ-016](#req-016). Which classes, in which release; and whether partial differential equations are ever in scope. **Partly resolved** (Thomas, 16 October 2026, as proposed): linear ordinary differential equations with constant coefficients come after the first release ([REQ-016](#req-016)). Still open: partial differential equations — Thomas notes that some classes have known families of solutions, so "never" may be too strong. **Resolved** (Thomas, 16 October 2026, as proposed): partial differential equations are a COULD for later releases on the same terms as ordinary ones — only listed classes with known methods of solution (separable equations, for example), and a clear statement for any other ([REQ-016](#req-016)); no release is planned for them. **Needed by:** the roadmap.
+<a id="open-f"></a>**OPEN-F — Numbers for scale and performance.** [REQ-040](#req-040), [REQ-052](#req-052), [REQ-053](#req-053), [REQ-056](#req-056).
+What are the numbers the scale and performance requirements are stated in?
+They are the 10⁶ terms of [REQ-053](#req-053), the tracing overhead of [REQ-040](#req-040) (2%), the factors against FORM of [REQ-056](#req-056) and the thread speed-up of [REQ-052](#req-052).
+Thomas accepted them as working targets on 15 October 2026, until a spike measures FORM on the corpus. <!-- glossary-ignore: target -->
 
-<a id="open-m"></a>**OPEN-M — Numerical capability.** [REQ-015](#req-015), [REQ-018](#req-018). Whether the engine evaluates expressions and finds roots numerically itself (to arbitrary precision), or leaves numerics to the exported code of [REQ-057](#req-057) and other tools. **Resolved** (Thomas, 16 October 2026, on a revised proposal): numerical evaluation to a chosen precision is a SHOULD of the first release ([REQ-101](#req-101)); numerical root-finding and the numerical solution of equations COULD come later ([REQ-015](#req-015)). Exact substitution of values ([REQ-010](#req-010)) is not numerics. **Needed by:** the roadmap.
+- **Partly resolved** (Thomas, 15 October 2026): the factor against FORM is split by kind of calculation ([REQ-056](#req-056)).
+  It is at most 3 for kind (A), many terms rewritten and sorted.
+  The factor for kind (B), polynomial arithmetic, is set after the spike measures FORM 5.0.2 with FLINT.
+- **Rationale:** FORM 5 with FLINT is 16 to 53 times faster than without it on rational-function work, while its loop over terms is little changed.
+  One factor against "FORM" would be ambiguous ([prior-art.md §4.7](prior-art.md#47-performance-targets-open-f-req-056)).
+- **Spike:** it uses polybench (Takahiro Ueda's MIT-licensed benchmark of polynomial greatest common divisors and factorisation; [github.com/tueda/polybench](https://github.com/tueda/polybench)) without its Symbolica column ([OPEN-P](#open-p)).
+  It also measures TFORM 5.0.2's speed-up on 2 and 4 threads, which becomes the target of [REQ-052](#req-052) (Thomas, 16 October 2026). <!-- glossary-ignore: target -->
+- **Still open:** the factor for (B), and the confirmation of the other numbers by measurement.
+- **Needed by:** [Phase 9](roadmap.md#phase-9-performance-baseline), the first performance acceptance test.
 
-<a id="open-n"></a>**OPEN-N — Series, limits, assumptions and inequalities.** [REQ-010](#req-010), [REQ-015](#req-015). Raised by Thomas's question, 15 October 2026, whether the core is manipulation only. Proposed, rather than elicited: (a) **series expansion and truncation** (Taylor and Laurent series in a small parameter, dropping powers beyond a chosen order) SHALL be in the core early, because physics calculations expand in a small coupling or in the dimensional-regularisation parameter ε constantly, and FORM provides truncation; (b) **assumptions** (declaring x > 0, n an integer) SHOULD come with the rational-function stage, because without them simplifications such as √(x²) = x cannot be made correctly; (c) **limits** COULD come later, since a reliable general algorithm exists but is substantial; (d) **solving inequalities** is OUT OF SCOPE, as rarely needed in the calculations the engine is for. **Resolved** (Thomas, 15 October 2026, as proposed): [REQ-093](#req-093), [REQ-094](#req-094), [REQ-095](#req-095). **Needed by:** the roadmap.
+<a id="open-g"></a>**OPEN-G — Reference machine.**
+Which machine is every performance requirement stated against?
 
-<a id="open-o"></a>**OPEN-O — Libraries and reused code.** [REQ-004](#req-004). Raised by the prior-art survey ([prior-art.md §4.1](prior-art.md#41-a-new-and-independent-engine-req-004)). (a) Whether an arithmetic library (FLINT for polynomials, GMP for integers, MPFR for floating point) counts as "another computer-algebra system's core", which [REQ-004](#req-004) forbids building on. FORM 5 delegates polynomial greatest common divisors and rational functions to FLINT, with large speed-ups; SymEngine also links it. Proposed: it does not, provided the library's licence is compatible with GPL-3.0 (FLINT's to be checked) and the engine's representation, rewriting and canonical form remain its own. (b) Whether GPL-licensed code of other systems may be reused, notably xPerm's C canonicaliser for tensors, which Cadabra2 already reuses. Proposed: decided case by case by ADR, at stage 4. Thomas, 15 October 2026: inclined to accept (a) and (b), and proposes that every such library sit behind an interface of the engine's own, so that it can be replaced if something better appears, if the project writes its own, or if the library's licence changes. **Resolved** (Thomas, 15 October 2026, as proposed): (a) arithmetic libraries may be used ([REQ-004](#req-004)), each behind an interface of the engine's own ([REQ-096](#req-096)), with an independent polynomial implementation for cross-checks ([REQ-097](#req-097)); FLINT's licence (the [LGPL](glossary.md#lgpl)) is to be confirmed, version included, in the polynomial ADR. (b) Reuse of xPerm is decided by ADR at stage 4, after checking that the licence version of `xperm.c` is compatible with GPL-3.0 (a "[GPL](glossary.md#gpl) version 2 only" licence would not be); the canonicaliser is a replaceable component under [REQ-096](#req-096) either way. **Needed by:** design (the polynomial ADR); (b) [Phase 12](roadmap.md#phase-12-indices-vectors-and-tensors). **(a) Recorded** (accepted by Thomas, 16 October 2026; [ADR-0003](adr/0003-flint-gmp-arb-behind-own-interfaces.md)): FLINT 3.6.0 (LGPL-3.0-or-later, confirmed from its source on 16 October 2026) for polynomial arithmetic, GCD and factorisation; GMP 6.3.0 (LGPL-3.0-or-later or GPL-2.0-or-later) for big integers; FLINT's ball arithmetic (`arb`) for numerical evaluation, with MPFR 4.2.2 (LGPL-3.0-or-later) as FLINT's own dependency; all compatible with GPL-3.0-or-later; each behind an interface of Tante's own, with a simple polynomial implementation of Tante's own, selectable by the user, and results normalised by Tante so that they are identical whichever implementation computed them ([REQ-074](#req-074) (d)). (b) remains open.
+- **Resolved** (Thomas, 16 October 2026): a GitHub-hosted standard Linux runner, rather than a personal machine whose background load and configuration change over time.
+- **Method** (proposed by Claude, 16 October 2026, to be fixed in the performance spike): Tante and FORM 5.0.2 run in the same job, interleaved, each benchmark repeated and the median taken.
+  The runner's CPU model is recorded with every result.
+  Requirements are stated as ratios within one job ([REQ-052](#req-052), [REQ-056](#req-056)), because hosted runners share hardware with other jobs and their CPU model varies between runs.
+- **Caveats:** the 4 virtual CPUs may be hyperthreads of 2 physical cores, which limits what a 4-thread measurement shows.
+  The 14 GB of disk will not hold the larger-than-memory calculations of [REQ-054](#req-054), which will need a larger (paid or self-hosted) runner when that capability arrives.
+  The repository has to be on GitHub and public for the 4-CPU runner.
 
-<a id="open-p"></a>**OPEN-P — Symbolica's licence.** Raised by the prior-art survey ([prior-art.md §2.4](prior-art.md#24-symbolica-positioning-and-licence-only-by-deliberate-choice)). Symbolica (Ben Ruijl, a former FORM developer) changed on 15 September 2026 to a source-available licence that forbids using it, its documentation, or anything learned from them as a reference implementation, behavioural oracle, development blueprint, benchmark or output comparison for a "Competing Product", which explicitly includes free software, also through clean-room teams or AI systems. Tante is very plausibly such a product. Proposed: a project rule, recorded by ADR, that no requirement, design, test or benchmark of Tante draws on Symbolica, and that any external benchmark table (such as polybench) is used without its Symbolica column; whether to take legal advice is Thomas's decision. **Resolved** (Thomas, 15 October 2026, as proposed): the rule holds and is to be recorded by ADR. The working notes behind the survey, which recorded Symbolica details from its website, were deleted the same day without being committed. Thomas decided on 16 October 2026 not to take legal advice; the rule is recorded in [ADR-0002](adr/0002-no-input-from-symbolica.md). **Needed by:** design. **Recorded** (accepted by Thomas, 16 October 2026; [ADR-0002](adr/0002-no-input-from-symbolica.md)): no part of Tante is informed by Symbolica's source, binaries, documentation, website, benchmark numbers or output, for any version; Symbolica is never run or compared with; external benchmark tables such as polybench are vendored with the Symbolica column deleted; facts about its positioning and licence may be stated but are never a design argument.
+<a id="open-h"></a>**OPEN-H — FORM output compatibility.** [REQ-023](#req-023).
+Must output in FORM's format match FORM's character for character (line breaking, term order), or only its syntax?
 
-<a id="open-q"></a>**OPEN-Q — Factorisation.** [REQ-010](#req-010). Raised in the ninth pass (16 October 2026), which Thomas could not yet answer: whether the first release factorises polynomials, that is, writes a polynomial as a product of factors that cannot be split further with rational coefficients — for example x² − y² = (x − y)(x + y), and s²t − t³ = t(s − t)(s + t); x² + 1 stays as it is, since splitting it needs the imaginary unit. It differs from the greatest common divisor (the largest factor two polynomials share) and from normalising a rational function (cancelling common factors of numerator and denominator), both already in [REQ-010](#req-010), neither of which splits a polynomial into its factors. Use in physics: finding the poles of a result in its kinematic variables, partial fractions, and readable results. Cost: multivariate factorisation is algorithmically substantial; FLINT provides it, but the independent implementation of [REQ-097](#req-097) would not, so a factorisation is checked by multiplying the factors back, which shows they are correct but not that they cannot be split further. Proposed: SHALL in the first release, through the library of [REQ-096](#req-096), over the rational numbers only. **Resolved** (Thomas, 16 October 2026, as proposed): [REQ-010](#req-010). **Needed by:** the roadmap.
+- **Resolved** (Thomas, 15 October 2026): syntax only ([REQ-023](#req-023)).
+- **Rationale:** matching FORM's characters would mean reproducing its term order, which follows from its internal representation, against [REQ-004](#req-004).
+  Parsers do not depend on term order ([prior-art.md §4.5](prior-art.md#45-the-form-version-and-the-form-corpus-open-d-req-020-req-021-req-023)).
 
-<a id="open-r"></a>**OPEN-R — Examples that are tests.** [REQ-091](#req-091). Raised on 25 October 2026, when Thomas decided how documentation is organised (user documentation in `docs/user/`, by kind: tutorials, how-to guides, reference and explanation): how an example in the user documentation is marked as one, run by the automated tests, and compared with its expected output. Python's doctest and Rust's documentation tests extract code blocks from the documentation and compare the printed output. FeynCalc's examples cite a textbook equation and fail when the result disagrees ([REQ-070](#req-070)). The answer depends on the syntax of the native language ([REQ-013](#req-013)) and on how the command-line tool prints results, neither of which exists yet. **Needed by:** the first user document, the getting-started tutorial of [Phase 3](roadmap.md#phase-3-the-native-language-and-first-scripts). <!-- glossary-ignore: block -->
+<a id="open-i"></a>**OPEN-I — Defaults for conventions.** [REQ-034](#req-034).
+May a module default a convention, or must the user always declare it?
+
+- **Resolved** (Thomas, 16 October 2026): a module may default a convention.
+  The result always records it.
+  The documentation of each module states its defaults on its first page.
+- **Rationale:** mandatory declaration is safest, but defaults are friendlier to learners.
+
+<a id="open-j"></a>**OPEN-J — Platforms.** [REQ-050](#req-050).
+Which systems does the engine run on, given that [REQ-051](#req-051) requires Linux?
+
+- **Resolved** (Thomas, 15 October 2026): Windows, macOS and Linux, all SHALL and natively ([REQ-050](#req-050)), rather than Windows as a SHOULD through the Windows Subsystem for Linux.
+- **Rationale:** no technical reason prevents it.
+  The costs are building and testing on three systems for every change, and the file and memory handling of [REQ-054](#req-054), which differs between systems.
+
+<a id="open-k"></a>**OPEN-K — Order of the physics modules.** [REQ-033](#req-033).
+In which order are the engine's capabilities built, and which of them make up the first release? <!-- glossary-ignore: stage -->
+
+- **Resolved** (Thomas, 15 October 2026): the engine is built up from simpler mathematics before the advanced modules, in six stages: <!-- glossary-ignore: stage -->
+  1. numbers and polynomials — exact rationals, expansion, collection, substitution, canonical form;
+  2. rational functions and differentiation;
+  3. linear algebra and equations;
+  4. generic indices and tensors with symmetries and contraction, without physics content;
+  5. the FORM front end on stages 1 to 4;
+  6. physics modules — Dirac algebra, GR tensors, spinor-helicity, colour algebra.
+- **Consequence:** real FORM scripts run only from stage 6. <!-- glossary-ignore: stage -->
+  FORM compatibility grows release by release ([REQ-020](#req-020), [REQ-025](#req-025)).
+- **Releases:** the first release is stages 1 to 3, an engine preview (Thomas, 11 November 2026). <!-- glossary-ignore: stage -->
+  Stage 4 is designed in from the start ([REQ-017](#req-017)) and delivered in the second release.
+  The minimum viable product is the third release, which runs existing FORM scripts ([roadmap](roadmap.md#releases-and-who-they-are-for)).
+- **Rationale:** the intake's "basic mathematics first" ([REQ-010](#req-010)); putting Dirac algebra first would have moved physics into the first release.
+  The first release is a preview, not the minimum viable product, because FORM users' scripts need indices and Dirac algebra from their first lines.
+
+<a id="open-l"></a>**OPEN-L — Scope of differential equations.** [REQ-016](#req-016).
+Which classes of differential equations come in which release, and are partial differential equations ever in scope?
+
+- **Resolved** (Thomas, 16 October 2026): linear ordinary differential equations with constant coefficients come after the first release.
+  Partial differential equations are a COULD for later releases on the same terms as ordinary ones: only listed classes with known methods of solution (separable equations, for example), and a clear statement for any other ([REQ-016](#req-016)).
+  No release is planned for them.
+- **Rationale:** some classes of partial differential equations have known families of solutions, so "never" would be too strong.
+
+<a id="open-m"></a>**OPEN-M — Numerical capability.** [REQ-015](#req-015), [REQ-018](#req-018).
+Does the engine evaluate expressions and find roots numerically itself (to arbitrary precision), or leave numerics to the exported code of [REQ-057](#req-057) and other tools?
+
+- **Resolved** (Thomas, 16 October 2026): numerical evaluation to a chosen precision is a SHOULD of the first release ([REQ-101](#req-101)).
+  Numerical root-finding and the numerical solution of equations COULD come later ([REQ-015](#req-015)).
+  Exact substitution of values ([REQ-010](#req-010)) is not numerics.
+- **Rationale** ([REQ-101](#req-101)): substituting random values is the quickest check that two long expressions agree; an existing library does the arithmetic.
+
+<a id="open-n"></a>**OPEN-N — Series, limits, assumptions and inequalities.** [REQ-010](#req-010), [REQ-015](#req-015).
+Does the core go beyond manipulation, as Thomas asked on 15 October 2026?
+
+- **Resolved** (Thomas, 15 October 2026):
+  series expansion and truncation SHALL be in the core early ([REQ-093](#req-093));
+  assumptions SHOULD come with the rational-function stage ([REQ-094](#req-094)); <!-- glossary-ignore: stage -->
+  limits COULD come later ([REQ-095](#req-095));
+  solving inequalities is OUT OF SCOPE, as rarely needed in the calculations the engine is for.
+- **Rationale:** in each requirement.
+
+<a id="open-o"></a>**OPEN-O — Libraries and reused code.** [REQ-004](#req-004).
+Raised by the prior-art survey ([prior-art.md §4.1](prior-art.md#41-a-new-and-independent-engine-req-004)).
+(a) Does an arithmetic library (FLINT for polynomials, GMP for integers, MPFR for floating point) count as "another computer-algebra system's core", which [REQ-004](#req-004) forbids building on?
+(b) May GPL-licensed code of other systems be reused, notably xPerm's C canonicaliser for tensors, which Cadabra2 already reuses?
+
+- **Resolved** (Thomas, 15 October 2026): (a) arithmetic libraries may be used ([REQ-004](#req-004)), each behind an interface of the engine's own ([REQ-096](#req-096)), with an independent polynomial implementation for cross-checks ([REQ-097](#req-097)).
+- **Rationale:** FORM 5 and SymEngine both use FLINT; for FORM 5 it brought large speed-ups.
+  An interface of the engine's own lets a library be replaced if something better appears, if the project writes its own, or if the library's licence changes.
+- **(a) in [ADR-0003](adr/0003-flint-gmp-arb-behind-own-interfaces.md)** (accepted by Thomas, 16 October 2026):
+  FLINT 3.6.0 ([LGPL](glossary.md#lgpl)-3.0-or-later, confirmed from its source on 16 October 2026) for polynomial arithmetic, GCD and factorisation;
+  GMP 6.3.0 (LGPL-3.0-or-later or GPL-2.0-or-later) for big integers;
+  FLINT's ball arithmetic (`arb`) for numerical evaluation, with MPFR 4.2.2 (LGPL-3.0-or-later) as FLINT's own dependency;
+  all compatible with GPL-3.0-or-later.
+  Each sits behind an interface of Tante's own, with a simple polynomial implementation of Tante's own, selectable by the user.
+  Results are normalised by Tante so that they are identical whichever implementation computed them ([REQ-074](#req-074) (d)).
+- **(b) remains open:** reuse of xPerm is decided by ADR at stage 4, after checking that the licence version of `xperm.c` is compatible with GPL-3.0 (a "[GPL](glossary.md#gpl) version 2 only" licence would not be). <!-- glossary-ignore: stage -->
+  The canonicaliser is a replaceable component under [REQ-096](#req-096) either way.
+- **Needed by:** (b) [Phase 12](roadmap.md#phase-12-indices-vectors-and-tensors).
+
+<a id="open-p"></a>**OPEN-P — Symbolica's licence.**
+May any part of Tante draw on Symbolica (Ben Ruijl, a former FORM developer)?
+On 15 September 2026 Symbolica changed to a source-available licence that forbids using it, its documentation, or anything learned from them as a reference implementation, behavioural oracle, development blueprint, benchmark or output comparison for a "Competing Product", explicitly including free software ([prior-art.md §2.4](prior-art.md#24-symbolica-positioning-and-licence-only-by-deliberate-choice)).
+Tante is very plausibly such a product.
+
+- **Resolved** (Thomas, 15 October 2026): no requirement, design, test or benchmark of Tante draws on Symbolica.
+  Thomas decided on 16 October 2026 not to take legal advice.
+- **Recorded** (accepted by Thomas, 16 October 2026; [ADR-0002](adr/0002-no-input-from-symbolica.md)): no part of Tante is informed by Symbolica's source, binaries, documentation, website, benchmark numbers or output, for any version.
+  Symbolica is never run or compared with.
+  External benchmark tables such as polybench are vendored with the Symbolica column deleted.
+  Facts about its positioning and licence may be stated but are never a design argument.
+
+<a id="open-q"></a>**OPEN-Q — Factorisation.** [REQ-010](#req-010).
+Does the first release factorise polynomials, that is, write a polynomial as a product of factors that cannot be split further with rational coefficients?
+For example x² − y² = (x − y)(x + y), and s²t − t³ = t(s − t)(s + t); x² + 1 stays as it is, since splitting it needs the imaginary unit.
+This differs from the greatest common divisor and from normalising a rational function, neither of which splits a polynomial into its factors.
+
+- **Resolved** (Thomas, 16 October 2026): SHALL in the first release, through the library of [REQ-096](#req-096), over the rational numbers only ([REQ-010](#req-010)).
+- **Check:** the independent implementation of [REQ-097](#req-097) does not factorise, so a factorisation is checked by multiplying the factors back.
+  That shows the factors are correct, but not that they cannot be split further.
+- **Rationale:** physics uses factorisation to find the poles of a result in its kinematic variables, for partial fractions and for readable results.
+
+<a id="open-r"></a>**OPEN-R — Examples that are tests.** [REQ-091](#req-091).
+How is an example in the user documentation marked as one, run by the automated tests, and compared with its expected output?
+Raised on 25 October 2026, when Thomas decided how documentation is organised (user documentation in `docs/user/`, by kind: tutorials, how-to guides, reference and explanation).
+
+- **Models:** Python's doctest and Rust's documentation tests extract code blocks from the documentation and compare the printed output. <!-- glossary-ignore: block -->
+  FeynCalc's examples cite a textbook equation and fail when the result disagrees ([REQ-070](#req-070)).
+- **Depends on:** the syntax of the native language ([REQ-013](#req-013)) and how the command-line tool prints results, neither of which exists yet.
+- **Needed by:** the first user document, the getting-started tutorial of [Phase 3](roadmap.md#phase-3-the-native-language-and-first-scripts). <!-- glossary-ignore: block -->
 
 <a id="revision-history"></a>
 ## 14. Revision history
@@ -241,3 +775,4 @@ Each decision is recorded, with who took it and when, in the requirement or open
 | 0.19 | 25 Oct 2026 | Editorial | Terms linked to the [glossary](glossary.md) on their first use; no requirement changed. |
 | 0.20 | 11 Nov 2026 | Editorial | The PyPI name `tante` reserved by a placeholder release ([OPEN-A](#open-a)); five glossary terms added since 0.19 linked on their first use; no requirement changed. |
 | 0.21 | 11 Nov 2026 | 16, the roadmap | The first release is an engine preview and the third the minimum viable product ([OPEN-K](#open-k)); the interactive session ([REQ-060](#req-060)) and roots ([REQ-015](#req-015)) move to a later release, the export of [REQ-057](#req-057) to the release with the FORM front end; no text preprocessor in the native language ([REQ-013](#req-013)); expressions larger than memory with the fourth release ([REQ-054](#req-054)); the FORM-corpus target, preprocessor and tables recorded ([OPEN-D](#open-d)); Needed by notes name roadmap phases ([OPEN-F](#open-f), [OPEN-O](#open-o), [OPEN-R](#open-r)). |
+| 0.22 | 12 Nov 2026 | Editorial | Each entry is split into what it requires or asks and a labelled list (acceptance, example, rationale, evidence, decided), one sentence per source line; each open decision states only what holds now, who decided and when, and why; evidence shortened to links into [prior-art.md](prior-art.md); no requirement changed. |
