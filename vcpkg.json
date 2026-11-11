@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "tante",
+  "version-semver": "0.0.0",
+  "description": "A symbolic mathematics engine for physicists, successor to FORM.",
+  "license": "GPL-3.0-or-later",
+  "dependencies": [
+    "catch2"
+  ],
+  "builtin-baseline": "c52f7bd748185ef0e0daf033d9f2ddfc8a3449ea"
+}

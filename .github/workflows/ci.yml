@@ -1,0 +1,115 @@
+# Builds and tests Tante on Windows, macOS and Linux, with sanitizers, and runs
+# the guardrails of ADR-0001 point 3 and ADR-0004 point 5: clang-tidy,
+# clang-format and the include check.
+#
+# What each job enforces and what to do when it fails:
+# docs/development.md#continuous-integration
+# https://github.com/thomaswening/Tante/blob/main/docs/development.md#continuous-integration
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push to the same branch makes a running check pointless.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The vcpkg commit whose ports CI builds. It must equal builtin-baseline in
+  # vcpkg.json, so CI builds the versions the manifest pins.
+  VCPKG_COMMIT: c52f7bd748185ef0e0daf033d9f2ddfc8a3449ea
+  CLANG_TIDY_VERSION: "23.1.4"
+  CLANG_FORMAT_VERSION: "23.1.5"
+
+jobs:
+  build-and-test:
+    name: build and test (${{ matrix.system }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { system: windows, os: windows-latest, triplet: x64-windows-static-md, presets: "windows-msvc-release windows-msvc-asan" }
+          - { system: linux, os: ubuntu-latest, triplet: x64-linux, presets: "linux-gcc-release linux-gcc-asan" }
+          - { system: macos, os: macos-latest, triplet: arm64-osx, presets: "macos-clang-release macos-clang-asan" }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-vcpkg
+        with:
+          triplet: ${{ matrix.triplet }}
+      # Ubuntu 24.04 randomises addresses over more bits than AddressSanitizer
+      # supports, which makes it crash at start-up now and then.
+      - name: Narrow address randomisation for AddressSanitizer (Linux)
+        if: runner.os == 'Linux'
+        run: sudo sysctl vm.mmap_rnd_bits=28
+      - name: Put the MSVC AddressSanitizer runtime on PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dll = Get-ChildItem "$vs\VC\Tools\MSVC" -Recurse -Filter clang_rt.asan_dynamic-x86_64.dll | Where-Object FullName -like '*Hostx64\x64*' | Select-Object -First 1
+          $dll.DirectoryName | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Configure, build and test each preset
+        run: |
+          for preset in ${{ matrix.presets }}; do
+            echo "::group::$preset"
+            cmake --preset "$preset"
+            cmake --build --preset "$preset" --parallel
+            ctest --preset "$preset"
+            echo "::endgroup::"
+          done
+
+  clang-tidy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-vcpkg
+        with:
+          triplet: x64-linux
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install clang-tidy
+        run: pip install "clang-tidy==$CLANG_TIDY_VERSION"
+      - name: Write the compile commands
+        run: cmake --preset linux-clang-tidy
+      - name: Run clang-tidy
+        run: git ls-files 'src/*.cpp' 'tests/*.cpp' | xargs clang-tidy -p build/linux-clang-tidy --quiet
+
+  clang-format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install clang-format
+        run: pip install "clang-format==$CLANG_FORMAT_VERSION"
+      - name: Check the layout
+        run: git ls-files '*.cpp' '*.hpp' '*.h' '*.c' | xargs clang-format --dry-run --Werror
+
+  include-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test the include check
+        run: python -m unittest discover -s tools/tests
+      - name: Run the include check
+        run: python tools/check_architecture.py .

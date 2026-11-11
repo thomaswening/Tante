@@ -4,7 +4,7 @@ Tante is a symbolic mathematics engine for physicists, from elementary algebra t
 
 ## Status
 
-Design. No code yet. The project is specified in:
+Phase 1 of the [roadmap](docs/roadmap.md#phase-1-foundations), Foundations: the build, CI on Windows, macOS and Linux, and `tante --version`. Nothing calculates yet. How to build and test: [Development](docs/development.md#building-and-testing). The project is specified in:
 
 - [Requirements](docs/requirements.md): what Tante must do, verifiably
 - [Prior-art survey](docs/prior-art.md): existing systems, their limits, and the known results Tante will be validated against

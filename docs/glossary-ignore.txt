@@ -4,6 +4,8 @@
 # paragraph or list item instead.
 CPU  # general computing vocabulary
 GNU  # part of the licence's name
+DLL  # general computing vocabulary: a Windows shared library
+WSL  # Windows Subsystem for Linux, named in docs/tools/ci.md
 
 # Tante's own names
 AFCAS  # a rejected name candidate, in OPEN-A

@@ -1,0 +1,63 @@
+# Gets vcpkg at the commit the workflow pins, and builds the libraries of
+# vcpkg.json once per triplet, keeping them in a cache between runs. CMake's
+# configure step then takes them from that cache in seconds.
+#
+# Explained in docs/development.md#continuous-integration
+name: setup-vcpkg
+description: vcpkg at $VCPKG_COMMIT, with vcpkg.json's libraries built and cached
+
+inputs:
+  triplet:
+    description: The vcpkg triplet to build for, e.g. x64-linux
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Point vcpkg at its root and its binary cache
+      shell: bash
+      run: |
+        echo "VCPKG_ROOT=$RUNNER_TEMP/vcpkg" >> "$GITHUB_ENV"
+        echo "VCPKG_BINARY_SOURCES=clear;files,$GITHUB_WORKSPACE/vcpkg-bincache,readwrite" >> "$GITHUB_ENV"
+        mkdir -p "$GITHUB_WORKSPACE/vcpkg-bincache"
+    - name: Check that the pinned commit is the manifest's baseline
+      shell: bash
+      run: |
+        baseline=$(python3 -c 'import json; print(json.load(open("vcpkg.json"))["builtin-baseline"])')
+        if [ "$baseline" != "$VCPKG_COMMIT" ]; then
+          echo "::error file=vcpkg.json::builtin-baseline $baseline differs from VCPKG_COMMIT $VCPKG_COMMIT in .github/workflows/ci.yml"
+          exit 1
+        fi
+    - name: Get vcpkg
+      shell: bash
+      run: |
+        git clone --quiet https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+        git -C "$VCPKG_ROOT" checkout --quiet "$VCPKG_COMMIT"
+    - name: Bootstrap vcpkg (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: '& "$env:VCPKG_ROOT\bootstrap-vcpkg.bat" -disableMetrics'
+    - name: Bootstrap vcpkg (Linux, macOS)
+      if: runner.os != 'Windows'
+      shell: bash
+      run: '"$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics'
+    - name: Restore the built libraries
+      id: restore
+      uses: actions/cache/restore@v4
+      with:
+        path: vcpkg-bincache
+        key: vcpkg-${{ inputs.triplet }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('vcpkg.json') }}
+        # A change to vcpkg.json starts from the previous cache, so only the
+        # added or changed libraries are built.
+        restore-keys: vcpkg-${{ inputs.triplet }}-${{ env.VCPKG_COMMIT }}-
+    - name: Build the libraries of vcpkg.json
+      shell: bash
+      run: '"$VCPKG_ROOT/vcpkg" install --triplet "${{ inputs.triplet }}" --x-install-root "$RUNNER_TEMP/vcpkg-installed"'
+    # Saved here, before Tante itself is built, so a failing build or test
+    # never throws a long library build away.
+    - name: Save the built libraries
+      if: steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: vcpkg-bincache
+        key: vcpkg-${{ inputs.triplet }}-${{ env.VCPKG_COMMIT }}-${{ hashFiles('vcpkg.json') }}

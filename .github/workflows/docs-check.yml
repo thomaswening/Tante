@@ -24,6 +24,8 @@ jobs:
         with:
           node-version: "22"
       - name: Check documents
-        run: python tools/check_docs.py . --base "origin/${{ github.base_ref }}"
-        # Projects with code add their globs, e.g.
-        #   --source "src/**/*.cpp" --tests "tests/**/*.cpp" --repo-url "https://github.com/${{ github.repository }}"
+        run: >
+          python tools/check_docs.py . --base "origin/${{ github.base_ref }}"
+          --source "src/**/*.cpp" "src/**/*.hpp" "include/**/*.hpp" "include/**/*.h" "tools/check_architecture.py"
+          --tests "tests/**/*.cpp" "tools/tests/*.py"
+          --repo-url "https://github.com/${{ github.repository }}"
