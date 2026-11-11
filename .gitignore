@@ -1,0 +1,8 @@
+# CMake build trees, one per preset (CMakePresets.json).
+/build/
+# Visual Studio and VS Code state.
+/.vs/
+/.vscode/
+/CMakeUserPresets.json
+# Python caches from tools/.
+__pycache__/

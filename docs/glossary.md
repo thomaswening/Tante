@@ -213,6 +213,10 @@ Example: $\zeta(2) = \pi^2/6$. MZVs appear in Feynman integrals. FORM computed a
 
 - See also: [REQ-010](requirements.md#req-010)
 
+<a id="preset"></a>**preset** *(engineering)*: a named CMake configuration in `CMakePresets.json`: the compiler, the build type, the options. It plays the role of a launch profile in a .NET project. Example: `linux-gcc-asan` builds with GCC and the sanitizers.
+
+- Defined in: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md)
+
 <a id="preprocessor"></a>**preprocessor** *(engineering)*: a stage that rewrites the text of a script before it is parsed. FORM's preprocessor has loops, conditions and procedures, which FORM scripts use for program logic. Example: `#do i = 1, 3` … `#enddo` repeats the lines between three times, with `i` replaced by 1, 2 and 3.
 
 - Not to be confused with: the C preprocessor, which Tante's own C++ code uses for `#include`.
@@ -321,6 +325,11 @@ Example: $\zeta(2) = \pi^2/6$. MZVs appear in Feynman integrals. FORM computed a
 <a id="tform"></a>**TFORM** *(engineering)*: the multithreaded version of FORM, which runs one calculation on several cores of one machine (Tentyukov and Vermaseren, CPC 181 (2010) 1419).
 
 - See also: [the reference](#reference), [MPI](#mpi)
+
+<a id="triplet"></a>**triplet** *(engineering)*: vcpkg's name for what it builds a library for: the processor, the operating system and how the library is linked. It plays the role of a .NET runtime identifier such as `win-x64`. Example: `x64-windows-static-md` is 64-bit Windows, with libraries linked statically and the C runtime as a DLL.
+
+- See also: [vcpkg](#vcpkg)
+- Defined in: [development notes](development.md#presets)
 
 <a id="type-length-value"></a>**type–length–value** *(engineering)*: an encoding in which each record begins with its kind and its length, so a reader can skip a record it does not understand. In .NET terms it is like a `BinaryReader` skipping a length-prefixed record.
 

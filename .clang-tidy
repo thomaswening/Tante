@@ -1,0 +1,118 @@
+# clang-tidy configuration for Tante: the static analysis of ADR-0001 point 3
+# (docs/adr/0001-cpp20-cmake-vcpkg-guardrails.md). What CI runs and what to do
+# when it fails: docs/development.md#clang-tidy
+#
+# Copied from the coding-guideline skill's template (claude-config,
+# skills/coding-guideline/assets/clang-tidy) on 11 November 2026. Tante adds
+# two groups that ADR-0001 names, bugprone-* and performance-*, at the end of
+# Checks. Both find likely bugs and slow code, not matters of style, so they
+# do not fight the guideline.
+#
+# Every warning fails the run, so CI fails on any breach. Silence a single
+# finding with `// NOLINT(check-name)` and a comment that says why.
+#
+# How to read this file
+#
+# clang-tidy is a linter for C++, like the Roslyn analysers in .NET. It reads
+# this file from the project root. It runs on each source file with the
+# compiler's flags from build/compile_commands.json. The file has four parts:
+#
+#   Checks             Which checks run. `-*` turns all off. Each line after
+#                      it turns one on. (.NET: the enabled analyser rules.)
+#   WarningsAsErrors   '*' makes every finding an error. The exit code is
+#                      then non-zero. (.NET: TreatWarningsAsErrors.)
+#   HeaderFilterRegex  Which headers are checked too. Without it, findings
+#                      in included headers are not reported.
+#   CheckOptions       Settings per check, as `check-name.Option: value`.
+#                      (.NET: the naming lines in .editorconfig.)
+#
+# Example: with ConstexprVariableCase CamelCase and ConstexprVariablePrefix k
+# below, `constexpr int columns_per_value = 26;` fails with "invalid case
+# style for constexpr variable". `kColumnsPerValue` passes.
+
+Checks: >
+  -*,
+  readability-identifier-naming,
+  readability-identifier-length,
+  readability-function-size,
+  readability-function-cognitive-complexity,
+  readability-magic-numbers,
+  cppcoreguidelines-init-variables,
+  cppcoreguidelines-owning-memory,
+  misc-use-anonymous-namespace,
+  misc-const-correctness,
+  modernize-use-nodiscard,
+  performance-unnecessary-value-param,
+  google-explicit-constructor,
+  cppcoreguidelines-prefer-member-initializer,
+  cppcoreguidelines-pro-type-member-init,
+  modernize-use-default-member-init,
+  modernize-use-equals-delete,
+  google-global-names-in-headers,
+  bugprone-*,
+  performance-*
+
+WarningsAsErrors: '*'
+
+# Check the project's own headers too, not only the source files.
+HeaderFilterRegex: '.*/(include|src|apps|tests)/.*'
+
+CheckOptions:
+  # Naming: Google C++ style, as in references/cpp.md "Naming conventions".
+  readability-identifier-naming.NamespaceCase: lower_case
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.UnionCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.EnumConstantCase: CamelCase
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.TypedefCase: CamelCase
+  readability-identifier-naming.TypeTemplateParameterCase: CamelCase
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.MethodCase: lower_case
+  readability-identifier-naming.VariableCase: lower_case
+  readability-identifier-naming.ParameterCase: lower_case
+  # A const local is an ordinary variable that does not change: snake_case.
+  readability-identifier-naming.LocalConstantCase: lower_case
+  # Constants with a value fixed for the whole program: kPascalCase.
+  readability-identifier-naming.ConstexprVariableCase: CamelCase
+  readability-identifier-naming.ConstexprVariablePrefix: k
+  readability-identifier-naming.GlobalConstantCase: CamelCase
+  readability-identifier-naming.GlobalConstantPrefix: k
+  readability-identifier-naming.StaticConstantCase: CamelCase
+  readability-identifier-naming.StaticConstantPrefix: k
+  readability-identifier-naming.ClassConstantCase: CamelCase
+  readability-identifier-naming.ClassConstantPrefix: k
+  # Public struct fields are plain snake_case. Private members end in "_".
+  readability-identifier-naming.MemberCase: lower_case
+  readability-identifier-naming.PrivateMemberCase: lower_case
+  readability-identifier-naming.PrivateMemberSuffix: _
+  # main(argc, argv) keeps its customary parameter names.
+  readability-identifier-naming.IgnoreMainLikeFunctions: true
+
+  # No single letters, except i and j as loop counters. A project adds the
+  # physics symbols its glossary defines, for example '^x$'.
+  # Abbreviations such as `rf` or `cnt` pass this check: review catches them.
+  readability-identifier-length.MinimumVariableNameLength: 2
+  readability-identifier-length.IgnoredVariableNames: ''
+  readability-identifier-length.MinimumParameterNameLength: 2
+  readability-identifier-length.IgnoredParameterNames: ''
+  readability-identifier-length.MinimumLoopCounterNameLength: 2
+  readability-identifier-length.IgnoredLoopCounterNames: '^[ij]$'
+  readability-identifier-length.MinimumExceptionNameLength: 2
+  readability-identifier-length.IgnoredExceptionVariableNames: ''
+
+  # A function fits on a screen. The guideline aims at about 40 lines. The
+  # check fails only well beyond that, so it never fights a function that is
+  # long for a good reason (a table, a switch over every case).
+  readability-function-size.LineThreshold: 60
+  readability-function-cognitive-complexity.Threshold: 15
+
+  # const on every local that does not change. What a pointer points to is
+  # left alone: the rule is about the variable, and main's argv would fail.
+  misc-const-correctness.WarnPointersAsPointers: false
+
+  # Only 0, 1 and -1 may stand bare. 0 and 0.0 are always accepted.
+  # A value counts as accepted when its absolute value is in the list.
+  readability-magic-numbers.IgnoredIntegerValues: '1'
+  readability-magic-numbers.IgnoredFloatingPointValues: '1.0'

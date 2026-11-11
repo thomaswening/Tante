@@ -107,8 +107,8 @@ An arrow means "may use". Nothing points upwards. Dashed boxes and arrows belong
 | `tante_mod_linalg`, `tante_mod_elementary` | static | The first release's built-in modules ([REQ-014](requirements.md#req-014), [REQ-099](requirements.md#req-099)). | Planned |
 | `tante_lang` | static | The native language: parsing, and printing as text and LaTeX ([REQ-013](requirements.md#req-013), [REQ-057](requirements.md#req-057)). | Planned |
 | `tante_form` | static | The FORM [front end](glossary.md#front-end) ([REQ-020](requirements.md#req-020)). | Planned for stage 5 of [OPEN-K](requirements.md#open-k) |
-| `tante_api` | static | The public C++ API: sessions, scripts, modules, results, saving and loading. The one place that chooses adapters, as `Program.cs` registers services in a .NET host. | Planned |
-| `tante` | executable | Arguments, script files, output, diagnostics, exit status, the interactive session ([REQ-060](requirements.md#req-060)). | Planned |
+| `tante_api` | static | The public C++ API: sessions, scripts, modules, results, saving and loading. The one place that chooses adapters, as `Program.cs` registers services in a .NET host. | Started: `tante::version()` |
+| `tante` | executable | Arguments, script files, output, diagnostics, exit status, the interactive session ([REQ-060](requirements.md#req-060)). | Started: `tante --version` |
 | `tante_c` | shared library | The C embedding API for Python and other languages. | Planned for a later release |
 
 ### Dependency rules
@@ -121,7 +121,7 @@ An arrow means "may use". Nothing points upwards. Dashed boxes and arrows belong
 - Run-time choices, such as the polynomial implementation or the store, are made only in `tante_api` ([REQ-097](requirements.md#req-097)).
 - Only the term view and builder in `tante_core` read or write the words of a term ([ADR-0005](adr/0005-term-representation.md) point 6).
 
-These rules are enforced by the build graph (every link `PRIVATE` unless a public header needs it), by the include check, by a build without FLINT and by the out-of-tree example module `examples/module-hello`, built and loaded by a test on all three systems ([ADR-0004](adr/0004-library-first-target-structure.md) point 5). All four arrive with the first code.
+These rules are enforced by the build graph (every link `PRIVATE` unless a public header needs it), by the [include check](tools/check_architecture.md), by a build without FLINT and by the out-of-tree example module `examples/module-hello`, built and loaded by a test on all three systems ([ADR-0004](adr/0004-library-first-target-structure.md) point 5). The build graph and the include check are in place. The other two arrive in phase 1 of the [roadmap](roadmap.md#phase-1-foundations), with FLINT and the module SDK.
 
 ## 6. Runtime view
 

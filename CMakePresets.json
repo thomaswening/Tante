@@ -1,0 +1,92 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 28, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+      "cacheVariables": {
+        "CMAKE_COMPILE_WARNING_AS_ERROR": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "hidden": true,
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "release",
+      "hidden": true,
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "sanitize",
+      "hidden": true,
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "TANTE_SANITIZE": "ON" }
+    },
+    {
+      "name": "windows",
+      "hidden": true,
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "generator": "Visual Studio 18 2026",
+      "architecture": { "value": "x64", "strategy": "set" },
+      "cacheVariables": { "VCPKG_TARGET_TRIPLET": "x64-windows-static-md" }
+    },
+    {
+      "name": "linux",
+      "hidden": true,
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": { "CMAKE_CXX_COMPILER": "g++" }
+    },
+    {
+      "name": "macos",
+      "hidden": true,
+      "inherits": "base",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": { "CMAKE_CXX_COMPILER": "clang++" }
+    },
+    { "name": "windows-msvc-debug", "inherits": ["windows", "debug"] },
+    { "name": "windows-msvc-release", "inherits": ["windows", "release"] },
+    { "name": "windows-msvc-asan", "inherits": ["windows", "sanitize"] },
+    { "name": "linux-gcc-debug", "inherits": ["linux", "debug"] },
+    { "name": "linux-gcc-release", "inherits": ["linux", "release"] },
+    { "name": "linux-gcc-asan", "inherits": ["linux", "sanitize"] },
+    { "name": "macos-clang-debug", "inherits": ["macos", "debug"] },
+    { "name": "macos-clang-release", "inherits": ["macos", "release"] },
+    { "name": "macos-clang-asan", "inherits": ["macos", "sanitize"] },
+    {
+      "name": "linux-clang-tidy",
+      "displayName": "Compile commands for clang-tidy",
+      "inherits": ["linux", "debug"],
+      "cacheVariables": { "CMAKE_CXX_COMPILER": "clang++" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "windows-msvc-debug", "configurePreset": "windows-msvc-debug", "configuration": "Debug" },
+    { "name": "windows-msvc-release", "configurePreset": "windows-msvc-release", "configuration": "Release" },
+    { "name": "windows-msvc-asan", "configurePreset": "windows-msvc-asan", "configuration": "RelWithDebInfo" },
+    { "name": "linux-gcc-debug", "configurePreset": "linux-gcc-debug" },
+    { "name": "linux-gcc-release", "configurePreset": "linux-gcc-release" },
+    { "name": "linux-gcc-asan", "configurePreset": "linux-gcc-asan" },
+    { "name": "macos-clang-debug", "configurePreset": "macos-clang-debug" },
+    { "name": "macos-clang-release", "configurePreset": "macos-clang-release" },
+    { "name": "macos-clang-asan", "configurePreset": "macos-clang-asan" }
+  ],
+  "testPresets": [
+    { "name": "base", "hidden": true, "output": { "outputOnFailure": true }, "execution": { "noTestsAction": "error" } },
+    { "name": "windows-msvc-debug", "inherits": "base", "configurePreset": "windows-msvc-debug", "configuration": "Debug" },
+    { "name": "windows-msvc-release", "inherits": "base", "configurePreset": "windows-msvc-release", "configuration": "Release" },
+    { "name": "windows-msvc-asan", "inherits": "base", "configurePreset": "windows-msvc-asan", "configuration": "RelWithDebInfo" },
+    { "name": "linux-gcc-debug", "inherits": "base", "configurePreset": "linux-gcc-debug" },
+    { "name": "linux-gcc-release", "inherits": "base", "configurePreset": "linux-gcc-release" },
+    { "name": "linux-gcc-asan", "inherits": "base", "configurePreset": "linux-gcc-asan" },
+    { "name": "macos-clang-debug", "inherits": "base", "configurePreset": "macos-clang-debug" },
+    { "name": "macos-clang-release", "inherits": "base", "configurePreset": "macos-clang-release" },
+    { "name": "macos-clang-asan", "inherits": "base", "configurePreset": "macos-clang-asan" }
+  ]
+}
