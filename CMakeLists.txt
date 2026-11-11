@@ -16,9 +16,6 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Lets include() find CMake files in cmake/. include(TanteCompilerOptions)
-# then runs cmake/TanteCompilerOptions.cmake, which defines
-# tante_apply_guardrails() for the targets below.
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(TanteCompilerOptions)
 

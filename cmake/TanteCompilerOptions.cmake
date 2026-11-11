@@ -12,7 +12,6 @@ option(TANTE_SANITIZE
   OFF)
 
 function(tante_apply_guardrails target)
-  # MSVC is a variable CMake sets to true when the compiler is Microsoft's.
   if(MSVC)
     # /W4: warning level 4 of 4, the strictest that is still usable. (/Wall
     #   also warns about the standard library's own headers.)
