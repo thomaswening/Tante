@@ -26,7 +26,7 @@ Tante is built with CMake and gets its libraries through [vcpkg](glossary.md#vcp
 | | Windows | Linux | macOS |
 |---|---|---|---|
 | Compiler | Visual Studio 2026 with "Desktop development with C++" ([MSVC](glossary.md#msvc) 19.51) | [GCC](glossary.md#gcc) 13 or later | Xcode 26 (Apple Clang 21) |
-| CMake | 3.28 or later. Visual Studio's own copy will do. | 3.28 or later | 3.28 or later |
+| CMake | 3.28 or later. Visual Studio's own copy will do ([below](#cmake-on-windows)). | 3.28 or later | 3.28 or later |
 | vcpkg | a clone at the commit in `vcpkg.json`'s `builtin-baseline`, with `VCPKG_ROOT` pointing at it | same | same |
 
 Get vcpkg once, anywhere outside the repository, and set `VCPKG_ROOT` to the folder you cloned it into. The CMake presets find vcpkg through that variable. On Windows, in PowerShell:
@@ -48,6 +48,12 @@ echo 'export VCPKG_ROOT="$HOME/vcpkg"' >> ~/.bashrc
 ```
 
 The commit is the one in `vcpkg.json`'s `builtin-baseline`. The first configure builds the libraries in `vcpkg.json`. Later configures take them from vcpkg's cache.
+
+Run these lines in the order shown: each one needs the folder or the program the line before it made.
+
+#### CMake on Windows
+
+Visual Studio's CMake is on the `PATH` only in "Developer PowerShell for VS 2026" from the Start menu. In a plain PowerShell, `cmake` is not found. Run the commands below in the Developer PowerShell, or install CMake for every terminal with `winget install Kitware.CMake`. Visual Studio itself needs neither: File > Open > Folder on the repository reads the presets.
 
 ### Presets
 
