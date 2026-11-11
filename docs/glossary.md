@@ -46,10 +46,10 @@ Fixed labels after an entry relate it to others: **Kind of** names the broader t
 - See also: [view](#view)
 - Defined in: [ADR-0005](adr/0005-term-representation.md)
 
-<a id="c-interface"></a>**C interface** *(project)*: the engine's interface in C, the header `tante.h`, for compiled modules and for bindings to other languages such as Python. It uses only C types and status codes, so any language that can call C can use it, as .NET does through P/Invoke.
+<a id="c-interface"></a>**C interface** *(project)*: an interface in C. It uses only C types and status codes, so any language that can call C can use it, as .NET does through P/Invoke. Tante has two. The [module interface](#module-interface), header `tante_module.h`, is how compiled modules connect, from the first release. The C embedding API, the shared library `tante_c`, is how Python and other languages will drive the engine, in a later release. Its header is not named yet.
 
 - See also: [module interface](#module-interface), [FFI](#ffi)
-- Defined in: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md#4-the-c-interface-for-compiled-modules-and-bindings)
+- Defined in: [ADR-0001](adr/0001-cpp20-cmake-vcpkg-guardrails.md#4-the-c-interface-for-compiled-modules-and-bindings), as one header `tante.h`; split into two by [ADR-0004](adr/0004-library-first-target-structure.md#decision)
 
 <a id="canonical-form"></a>**canonical form** *(domain)*: a way of writing objects such that two objects are equal exactly when they are written identically. Example: $(x+1)^2$ and $x^2 + 2x + 1$ are written as $x^2 + 2x + 1$.
 
