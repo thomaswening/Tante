@@ -55,6 +55,8 @@ Run these lines in the order shown: each one needs the folder or the program the
 
 Visual Studio's CMake is on the `PATH` only in "Developer PowerShell for VS 2026" from the Start menu. In a plain PowerShell, `cmake` is not found. Run the commands below in the Developer PowerShell, or install CMake for every terminal with `winget install Kitware.CMake`. Visual Studio itself needs neither: File > Open > Folder on the repository reads the presets.
 
+The Windows presets name the Visual Studio 2026 generator, so CMake writes a solution (`.sln`) as for a .NET project. It finds MSVC by itself: once `cmake` is found, the compiler needs no Developer PowerShell. A build folder remembers its generator: one configured before the presets named it, by Visual Studio with Ninja for example, fails with "Generator Ninja does not support platform specification". Delete that `build/<preset>/` folder and configure again.
+
 ### Presets
 
 | Preset | Build type | For |

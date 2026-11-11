@@ -32,6 +32,7 @@
       "hidden": true,
       "inherits": "base",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "generator": "Visual Studio 18 2026",
       "architecture": { "value": "x64", "strategy": "set" },
       "cacheVariables": { "VCPKG_TARGET_TRIPLET": "x64-windows-static-md" }
     },
